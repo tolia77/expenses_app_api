@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
+import { CategoryCreateDto } from './dto/category-create.dto';
+import { CategoryUpdateDto } from './dto/category-update.dto';
 
 @Controller('categories')
 export class CategoriesController {
@@ -16,13 +18,13 @@ export class CategoriesController {
     }
 
     @Post()
-    async createCategory() {
-        return this.categoriesService.create('New Category');
+    async createCategory(@Body() categoryCreateDto: CategoryCreateDto) {
+        return this.categoriesService.create(categoryCreateDto);
     }
 
     @Put(':id')
-    async updateCategory(@Param('id') id: number, @Body() body) {
-        this.categoriesService.update(id, body.name)
+    async updateCategory(@Param('id') id: number, @Body() categoryUpdateDto: CategoryUpdateDto) {
+        this.categoriesService.update(id, categoryUpdateDto)
         return this.categoriesService.findOne(id)
     }
 
