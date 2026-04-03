@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Category } from 'src/categories/category.entity';
 import { AppConfigModule } from 'src/config/config.module';
 
 @Module({
@@ -15,7 +16,7 @@ import { AppConfigModule } from 'src/config/config.module';
                 username: configuration.get<string>('database.username'),
                 password: configuration.get<string>('database.password'),
                 database: configuration.get<string>('database.name'),
-                entities: [],
+                entities: [Category],
                 synchronize: true,
             }),
         })
