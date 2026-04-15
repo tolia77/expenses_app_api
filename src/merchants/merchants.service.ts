@@ -12,34 +12,31 @@ export class MerchantsService {
     private merchantRepository: Repository<Merchant>,
   ) {}
 
-  async create(createMerchantDto: CreateMerchantDto) {
-    const merchant = this.merchantRepository.create(createMerchantDto);
+  async create(userId: string, createMerchantDto: CreateMerchantDto): Promise<Merchant> {
+    const merchant = this.merchantRepository.create({ ...createMerchantDto, userId });
     return this.merchantRepository.save(merchant);
   }
 
-  async findAll() {
-    return this.merchantRepository.find();
+  async findAll(userId: string): Promise<Merchant[]> {
+    return this.merchantRepository.find({ where: { userId } });
   }
 
-  async findOne(id: string) {
-    const merchant = await this.merchantRepository.findOneBy({ id });
+  async findOne(id: string, userId: string): Promise<Merchant> {
+    const merchant = await this.merchantRepository.findOneBy({ id, userId });
     if (!merchant) {
       throw new NotFoundException();
     }
     return merchant;
   }
 
-  async update(id: string, updateMerchantDto: UpdateMerchantDto) {
+  async update(id: string, userId: string, updateMerchantDto: UpdateMerchantDto): Promise<Merchant> {
+    await this.findOne(id, userId);
     await this.merchantRepository.update(id, updateMerchantDto);
-    const merchant = await this.merchantRepository.findOneBy({ id });
-    if (!merchant) {
-      throw new NotFoundException();
-    }
-    return merchant;
+    return this.findOne(id, userId);
   }
 
-  async remove(id: string) {
-    const result = await this.merchantRepository.delete(id);
+  async remove(id: string, userId: string): Promise<void> {
+    const result = await this.merchantRepository.delete({ id, userId });
     if (result.affected === 0) {
       throw new NotFoundException();
     }
