@@ -1,9 +1,11 @@
 import { Merchant } from 'src/merchants/entities/merchant.entity';
+import { User } from 'src/users/user.entity';
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
   ManyToOne,
+  OneToMany,
   CreateDateColumn,
 } from 'typeorm';
 
@@ -11,6 +13,12 @@ import {
 export class Receipt {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column()
+  userId: string;
+
+  @ManyToOne(() => User)
+  user: User;
 
   @ManyToOne(() => Merchant, (merchant) => merchant.receipts, {
     nullable: true,
@@ -29,4 +37,7 @@ export class Receipt {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @OneToMany('Expense', 'receipt')
+  expenses: any[];
 }
