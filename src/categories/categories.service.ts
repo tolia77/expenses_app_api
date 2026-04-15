@@ -12,17 +12,17 @@ export class CategoriesService {
     private categoryRepository: Repository<Category>,
   ) {}
 
-  async findAll(): Promise<Category[]> {
-    return this.categoryRepository.find();
+  async findAll(userId: string): Promise<Category[]> {
+    return this.categoryRepository.find({ where: { userId } });
   }
 
-  async create(categoryCreateDto: CategoryCreateDto): Promise<Category> {
-    const category = this.categoryRepository.create(categoryCreateDto);
+  async create(userId: string, categoryCreateDto: CategoryCreateDto): Promise<Category> {
+    const category = this.categoryRepository.create({ ...categoryCreateDto, userId });
     return this.categoryRepository.save(category);
   }
 
-  async findOne(id: string): Promise<Category> {
-    const category = await this.categoryRepository.findOneBy({ id });
+  async findOne(id: string, userId: string): Promise<Category> {
+    const category = await this.categoryRepository.findOneBy({ id, userId });
     if (!category) {
       throw new NotFoundException();
     }
@@ -31,18 +31,16 @@ export class CategoriesService {
 
   async update(
     id: string,
+    userId: string,
     categoryUpdateDto: CategoryUpdateDto,
   ): Promise<Category> {
+    await this.findOne(id, userId);
     await this.categoryRepository.update(id, categoryUpdateDto);
-    const category = await this.categoryRepository.findOneBy({ id });
-    if (!category) {
-      throw new NotFoundException();
-    }
-    return category;
+    return this.findOne(id, userId);
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.categoryRepository.delete(id);
+  async remove(id: string, userId: string): Promise<void> {
+    const result = await this.categoryRepository.delete({ id, userId });
     if (result.affected === 0) {
       throw new NotFoundException();
     }
