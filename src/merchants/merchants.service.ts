@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,25 +11,37 @@ export class MerchantsService {
     @InjectRepository(Merchant)
     private merchantRepository: Repository<Merchant>,
   ) {}
+
   async create(createMerchantDto: CreateMerchantDto) {
-    const category = this.merchantRepository.create(createMerchantDto);
-    return this.merchantRepository.save(category);
+    const merchant = this.merchantRepository.create(createMerchantDto);
+    return this.merchantRepository.save(merchant);
   }
 
   async findAll() {
     return this.merchantRepository.find();
   }
 
-  async findOne(id: number) {
-    return this.merchantRepository.findOneBy({ id });
+  async findOne(id: string) {
+    const merchant = await this.merchantRepository.findOneBy({ id });
+    if (!merchant) {
+      throw new NotFoundException();
+    }
+    return merchant;
   }
 
-  async update(id: number, updateMerchantDto: UpdateMerchantDto) {
+  async update(id: string, updateMerchantDto: UpdateMerchantDto) {
     await this.merchantRepository.update(id, updateMerchantDto);
-    return this.merchantRepository.findOneBy({ id });
+    const merchant = await this.merchantRepository.findOneBy({ id });
+    if (!merchant) {
+      throw new NotFoundException();
+    }
+    return merchant;
   }
 
-  async remove(id: number) {
-    await this.merchantRepository.delete(id);
+  async remove(id: string) {
+    const result = await this.merchantRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException();
+    }
   }
 }

@@ -1,9 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Receipt } from 'src/receipts/entities/receipt.entity';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 
 @Entity()
 export class Merchant {
   @PrimaryGeneratedColumn('uuid')
-  id: number;
+  id: string;
 
   @Column()
   name: string;
@@ -13,4 +14,7 @@ export class Merchant {
 
   @Column('jsonb', { nullable: true })
   other_details: object;
+
+  @OneToMany(() => Receipt, (receipt) => receipt.merchant)
+  receipts: Receipt[];
 }
