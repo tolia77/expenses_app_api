@@ -1,10 +1,12 @@
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { User } from 'src/users/user.entity';
+import { Expense } from 'src/expenses/expenses.entity';
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
   ManyToOne,
+  OneToMany,
   CreateDateColumn,
 } from 'typeorm';
 
@@ -36,4 +38,7 @@ export class Receipt {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @OneToMany(() => Expense, (expense) => expense.receipt)
+  expenses: Expense[];
 }
