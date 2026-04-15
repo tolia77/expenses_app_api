@@ -5,6 +5,7 @@ import { Category } from 'src/categories/category.entity';
 import { AppConfigModule } from 'src/config/config.module';
 import AppDataSource from 'src/config/typeorm.config';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
+import { Receipt } from 'src/receipts/entities/receipt.entity';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { Merchant } from 'src/merchants/entities/merchant.entity';
         username: config.get<string>('database.username'),
         password: config.get<string>('database.password'),
         database: config.get<string>('database.database'),
-        entities: [Category, Merchant],
+        entities: [Category, Merchant, Receipt],
         synchronize: false,
       }),
     }),
