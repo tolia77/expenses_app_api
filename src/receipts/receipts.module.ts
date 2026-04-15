@@ -9,5 +9,6 @@ import { MerchantsModule } from '../merchants/merchants.module';
   imports: [TypeOrmModule.forFeature([Receipt]), MerchantsModule],
   controllers: [ReceiptsController],
   providers: [ReceiptsService],
+  exports: [ReceiptsService],
 })
 export class ReceiptsModule {}
