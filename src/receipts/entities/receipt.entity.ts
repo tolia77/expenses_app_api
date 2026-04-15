@@ -5,7 +5,6 @@ import {
   Column,
   PrimaryGeneratedColumn,
   ManyToOne,
-  OneToMany,
   CreateDateColumn,
 } from 'typeorm';
 
@@ -37,7 +36,4 @@ export class Receipt {
 
   @CreateDateColumn()
   created_at: Date;
-
-  @OneToMany('Expense', 'receipt')
-  expenses: any[];
 }
