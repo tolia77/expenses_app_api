@@ -6,10 +6,12 @@ import {
   Put,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { ReceiptsService } from './receipts.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { UpdateReceiptDto } from './dto/update-receipt.dto';
+import { FilterReceiptsDto } from './dto/filter-receipts.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('receipts')
@@ -22,8 +24,8 @@ export class ReceiptsController {
   }
 
   @Get()
-  findAll(@CurrentUser() user) {
-    return this.receiptsService.findAll(user.sub);
+  findAll(@CurrentUser() user, @Query() filter: FilterReceiptsDto) {
+    return this.receiptsService.findAll(user.sub, filter);
   }
 
   @Get(':id')

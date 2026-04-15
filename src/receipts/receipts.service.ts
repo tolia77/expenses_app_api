@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Receipt } from './entities/receipt.entity';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { UpdateReceiptDto } from './dto/update-receipt.dto';
+import { FilterReceiptsDto } from './dto/filter-receipts.dto';
 import { MerchantsService } from '../merchants/merchants.service';
 
 @Injectable()
@@ -27,8 +28,19 @@ export class ReceiptsService {
     return this.receiptRepository.save(receipt);
   }
 
-  async findAll(userId: string): Promise<Receipt[]> {
-    return this.receiptRepository.find({ where: { userId } });
+  async findAll(userId: string, filter?: FilterReceiptsDto): Promise<Receipt[]> {
+    const where: any = { userId };
+    if (filter?.from && filter?.to) {
+      where.purchased_at = Between(
+        new Date(filter.from + 'T00:00:00.000Z'),
+        new Date(filter.to + 'T23:59:59.999Z'),
+      );
+    } else if (filter?.from) {
+      where.purchased_at = MoreThanOrEqual(new Date(filter.from + 'T00:00:00.000Z'));
+    } else if (filter?.to) {
+      where.purchased_at = LessThanOrEqual(new Date(filter.to + 'T23:59:59.999Z'));
+    }
+    return this.receiptRepository.find({ where });
   }
 
   async findOne(id: string, userId: string): Promise<Receipt> {
