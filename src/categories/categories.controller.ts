@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CategoryCreateDto } from './dto/category-create.dto';
 import { CategoryUpdateDto } from './dto/category-update.dto';
@@ -8,28 +8,27 @@ export class CategoriesController {
     constructor(private readonly categoriesService: CategoriesService) {}
 
     @Get()
-    async getAllCategories() {
+    async findAll() {
         return this.categoriesService.findAll();
     }
 
     @Get(':id')
-    async getCategory(@Param('id') id: number) {
-        return this.categoriesService.findOne(id)
+    async findOne(@Param('id') id: string) {
+        return this.categoriesService.findOne(id);
     }
 
     @Post()
-    async createCategory(@Body() categoryCreateDto: CategoryCreateDto) {
+    async create(@Body() categoryCreateDto: CategoryCreateDto) {
         return this.categoriesService.create(categoryCreateDto);
     }
 
-    @Put(':id')
-    async updateCategory(@Param('id') id: number, @Body() categoryUpdateDto: CategoryUpdateDto) {
-        this.categoriesService.update(id, categoryUpdateDto)
-        return this.categoriesService.findOne(id)
+    @Patch(':id')
+    async update(@Param('id') id: string, @Body() categoryUpdateDto: CategoryUpdateDto) {
+        return this.categoriesService.update(id, categoryUpdateDto);
     }
 
-    @Delete('id')
-    async deleteCategory(@Param('id') id: number) {
-        this.categoriesService.delete(id)
+    @Delete(':id')
+    async remove(@Param('id') id: string) {
+        return this.categoriesService.remove(id);
     }
 }
