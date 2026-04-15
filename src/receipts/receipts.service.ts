@@ -44,7 +44,10 @@ export class ReceiptsService {
   }
 
   async findOne(id: string, userId: string): Promise<Receipt> {
-    const receipt = await this.receiptRepository.findOneBy({ id, userId });
+    const receipt = await this.receiptRepository.findOne({
+      where: { id, userId },
+      relations: ['expenses'],
+    });
     if (!receipt) {
       throw new NotFoundException();
     }
@@ -56,17 +59,14 @@ export class ReceiptsService {
     userId: string,
     updateReceiptDto: UpdateReceiptDto,
   ): Promise<Receipt> {
-    await this.findOne(id, userId);
+    const receipt = await this.findOne(id, userId);
     const { merchant_id, ...rest } = updateReceiptDto;
     if (merchant_id !== undefined) {
       await this.merchantsService.findOne(merchant_id, userId);
+      receipt.merchant = { id: merchant_id } as any;
     }
-    const updateData: any = { ...rest };
-    if (merchant_id !== undefined) {
-      updateData.merchant = { id: merchant_id };
-    }
-    await this.receiptRepository.update(id, updateData);
-    return this.findOne(id, userId);
+    Object.assign(receipt, rest);
+    return this.receiptRepository.save(receipt);
   }
 
   async remove(id: string, userId: string): Promise<void> {
