@@ -5,9 +5,10 @@ import { DatabaseModule } from './database/database.module';
 import { AppConfigModule } from './config/config.module';
 import { CategoriesModule } from './categories/categories.module';
 import { MerchantsModule } from './merchants/merchants.module';
+import { ReceiptsModule } from './receipts/receipts.module';
 
 @Module({
-  imports: [AppConfigModule, DatabaseModule, CategoriesModule, MerchantsModule],
+  imports: [AppConfigModule, DatabaseModule, CategoriesModule, MerchantsModule, ReceiptsModule],
   controllers: [AppController],
   providers: [AppService],
 })
