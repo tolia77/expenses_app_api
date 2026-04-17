@@ -12,8 +12,14 @@ export class MerchantsService {
     private merchantRepository: Repository<Merchant>,
   ) {}
 
-  async create(userId: string, createMerchantDto: CreateMerchantDto): Promise<Merchant> {
-    const merchant = this.merchantRepository.create({ ...createMerchantDto, userId });
+  async create(
+    userId: string,
+    createMerchantDto: CreateMerchantDto,
+  ): Promise<Merchant> {
+    const merchant = this.merchantRepository.create({
+      ...createMerchantDto,
+      userId,
+    });
     return this.merchantRepository.save(merchant);
   }
 
@@ -29,7 +35,11 @@ export class MerchantsService {
     return merchant;
   }
 
-  async update(id: string, userId: string, updateMerchantDto: UpdateMerchantDto): Promise<Merchant> {
+  async update(
+    id: string,
+    userId: string,
+    updateMerchantDto: UpdateMerchantDto,
+  ): Promise<Merchant> {
     await this.findOne(id, userId);
     await this.merchantRepository.update(id, updateMerchantDto);
     return this.findOne(id, userId);
