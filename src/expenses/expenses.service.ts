@@ -16,7 +16,11 @@ export class ExpensesService {
     private categoriesService: CategoriesService,
   ) {}
 
-  async create(receiptId: string, userId: string, createExpenseDto: CreateExpenseDto): Promise<Expense> {
+  async create(
+    receiptId: string,
+    userId: string,
+    createExpenseDto: CreateExpenseDto,
+  ): Promise<Expense> {
     // Verify receipt ownership (throws 404 if not found/not owned)
     await this.receiptsService.findOne(receiptId, userId);
 
@@ -44,7 +48,11 @@ export class ExpensesService {
     return expense;
   }
 
-  async update(id: string, userId: string, updateExpenseDto: UpdateExpenseDto): Promise<Expense> {
+  async update(
+    id: string,
+    userId: string,
+    updateExpenseDto: UpdateExpenseDto,
+  ): Promise<Expense> {
     const expense = await this.findOne(id, userId);
     const { category_id, ...rest } = updateExpenseDto;
     if (category_id !== undefined) {

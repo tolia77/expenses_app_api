@@ -15,7 +15,10 @@ export class ReceiptsService {
     private merchantsService: MerchantsService,
   ) {}
 
-  async create(userId: string, createReceiptDto: CreateReceiptDto): Promise<Receipt> {
+  async create(
+    userId: string,
+    createReceiptDto: CreateReceiptDto,
+  ): Promise<Receipt> {
     const { merchant_id, ...rest } = createReceiptDto;
     if (merchant_id) {
       await this.merchantsService.findOne(merchant_id, userId);
@@ -28,7 +31,10 @@ export class ReceiptsService {
     return this.receiptRepository.save(receipt);
   }
 
-  async findAll(userId: string, filter?: FilterReceiptsDto): Promise<Receipt[]> {
+  async findAll(
+    userId: string,
+    filter?: FilterReceiptsDto,
+  ): Promise<Receipt[]> {
     const where: any = { userId };
     if (filter?.from && filter?.to) {
       where.purchased_at = Between(
@@ -36,9 +42,13 @@ export class ReceiptsService {
         new Date(filter.to + 'T23:59:59.999Z'),
       );
     } else if (filter?.from) {
-      where.purchased_at = MoreThanOrEqual(new Date(filter.from + 'T00:00:00.000Z'));
+      where.purchased_at = MoreThanOrEqual(
+        new Date(filter.from + 'T00:00:00.000Z'),
+      );
     } else if (filter?.to) {
-      where.purchased_at = LessThanOrEqual(new Date(filter.to + 'T23:59:59.999Z'));
+      where.purchased_at = LessThanOrEqual(
+        new Date(filter.to + 'T23:59:59.999Z'),
+      );
     }
     return this.receiptRepository.find({ where });
   }

@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsString, IsUUID, IsOptional, IsObject, IsNumber } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsObject,
+  IsNumber,
+} from 'class-validator';
 
 export class CreateExpenseDto {
   @IsNotEmpty()

@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
@@ -21,8 +25,14 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
     try {
-      const user = await this.usersService.create({ email: dto.email, passwordHash });
-      const token = await this.jwtService.signAsync({ sub: user.id, email: user.email });
+      const user = await this.usersService.create({
+        email: dto.email,
+        passwordHash,
+      });
+      const token = await this.jwtService.signAsync({
+        sub: user.id,
+        email: user.email,
+      });
       return { access_token: token };
     } catch (err) {
       if (err?.code === '23505') {
@@ -43,7 +53,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = await this.jwtService.signAsync({ sub: user.id, email: user.email });
+    const token = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
     return { access_token: token };
   }
 }

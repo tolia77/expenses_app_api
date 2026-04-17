@@ -34,7 +34,11 @@ export class ReceiptsController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @CurrentUser() user, @Body() updateReceiptDto: UpdateReceiptDto) {
+  update(
+    @Param('id') id: string,
+    @CurrentUser() user,
+    @Body() updateReceiptDto: UpdateReceiptDto,
+  ) {
     return this.receiptsService.update(id, user.sub, updateReceiptDto);
   }
 

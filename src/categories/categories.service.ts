@@ -16,8 +16,14 @@ export class CategoriesService {
     return this.categoryRepository.find({ where: { userId } });
   }
 
-  async create(userId: string, categoryCreateDto: CategoryCreateDto): Promise<Category> {
-    const category = this.categoryRepository.create({ ...categoryCreateDto, userId });
+  async create(
+    userId: string,
+    categoryCreateDto: CategoryCreateDto,
+  ): Promise<Category> {
+    const category = this.categoryRepository.create({
+      ...categoryCreateDto,
+      userId,
+    });
     return this.categoryRepository.save(category);
   }
 
