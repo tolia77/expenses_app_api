@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { AppConfigModule } from './config/config.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { MerchantsModule } from './merchants/merchants.module';
@@ -14,6 +15,7 @@ import { AuthModule } from './auth/auth.module';
   imports: [
     AppConfigModule,
     DatabaseModule,
+    AnalyticsModule,
     CategoriesModule,
     ExpensesModule,
     MerchantsModule,
