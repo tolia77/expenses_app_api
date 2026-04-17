@@ -1,12 +1,15 @@
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsObject } from 'class-validator';
 
 export class CreateMerchantDto {
   @IsNotEmpty()
+  @IsString()
   name: string;
 
   @IsOptional()
-  address: string;
+  @IsString()
+  address?: string;
 
   @IsOptional()
-  other_details: object;
+  @IsObject()
+  other_details?: object;
 }
