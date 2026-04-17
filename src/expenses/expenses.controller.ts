@@ -6,10 +6,12 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { SearchExpensesDto } from './dto/search-expenses.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller()
@@ -23,6 +25,11 @@ export class ExpensesController {
     @Body() createExpenseDto: CreateExpenseDto,
   ) {
     return this.expensesService.create(receiptId, user.sub, createExpenseDto);
+  }
+
+  @Get('expenses')
+  findAll(@CurrentUser() user, @Query() filter: SearchExpensesDto) {
+    return this.expensesService.findAll(user.sub, filter);
   }
 
   @Get('expenses/:id')

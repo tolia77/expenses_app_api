@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Expense } from './expenses.entity';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { SearchExpensesDto } from './dto/search-expenses.dto';
 import { ReceiptsService } from '../receipts/receipts.service';
 import { CategoriesService } from '../categories/categories.service';
 
@@ -15,6 +16,27 @@ export class ExpensesService {
     private receiptsService: ReceiptsService,
     private categoriesService: CategoriesService,
   ) {}
+
+  async findAll(
+    userId: string,
+    filter?: SearchExpensesDto,
+  ): Promise<Expense[]> {
+    const qb = this.expenseRepository
+      .createQueryBuilder('expense')
+      .innerJoin('expense.receipt', 'receipt')
+      .leftJoin('receipt.merchant', 'merchant')
+      .innerJoin('expense.category', 'category')
+      .where('receipt.userId = :userId', { userId });
+
+    if (filter?.search && filter.search.trim() !== '') {
+      qb.andWhere(
+        '(expense.name ILIKE :term OR merchant.name ILIKE :term OR category.name ILIKE :term)',
+        { term: `%${filter.search}%` },
+      );
+    }
+
+    return qb.getMany();
+  }
 
   async create(
     receiptId: string,
