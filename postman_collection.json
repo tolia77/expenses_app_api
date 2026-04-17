@@ -438,6 +438,31 @@
           }
         },
         {
+          "name": "Get All Expenses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expenses",
+              "host": ["{{baseUrl}}"],
+              "path": ["expenses"]
+            }
+          }
+        },
+        {
+          "name": "Search Expenses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expenses?search=coffee",
+              "host": ["{{baseUrl}}"],
+              "path": ["expenses"],
+              "query": [
+                { "key": "search", "value": "coffee" }
+              ]
+            }
+          }
+        },
+        {
           "name": "Get Expense by ID",
           "request": {
             "method": "GET",
@@ -474,6 +499,71 @@
               "raw": "{{baseUrl}}/expenses/{{expenseId}}",
               "host": ["{{baseUrl}}"],
               "path": ["expenses", "{{expenseId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "By Category (month)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/by-category?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "by-category"],
+              "query": [
+                { "key": "period", "value": "month" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By Category (custom range)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/by-category?period=custom&from=2026-01-01&to=2026-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "by-category"],
+              "query": [
+                { "key": "period", "value": "custom" },
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Total (week)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/total?period=week",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "total"],
+              "query": [
+                { "key": "period", "value": "week" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Total (custom range)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/total?period=custom&from=2026-01-01&to=2026-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "total"],
+              "query": [
+                { "key": "period", "value": "custom" },
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-12-31" }
+              ]
             }
           }
         }
