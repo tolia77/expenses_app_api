@@ -1,11 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { Receipt } from './entities/receipt.entity';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { UpdateReceiptDto } from './dto/update-receipt.dto';
 import { FilterReceiptsDto } from './dto/filter-receipts.dto';
 import { MerchantsService } from '../merchants/merchants.service';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class ReceiptsService {
@@ -13,6 +15,7 @@ export class ReceiptsService {
     @InjectRepository(Receipt)
     private receiptRepository: Repository<Receipt>,
     private merchantsService: MerchantsService,
+    private storageService: StorageService,
   ) {}
 
   async create(
