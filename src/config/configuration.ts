@@ -11,4 +11,12 @@ export default () => ({
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
   },
+  storage: {
+    endpoint: process.env.STORAGE_ENDPOINT,
+    bucket: process.env.STORAGE_BUCKET,
+    accessKey: process.env.STORAGE_ACCESS_KEY,
+    secret: process.env.STORAGE_SECRET,
+    region: process.env.STORAGE_REGION || 'us-east-1',
+    presignTtl: parseInt(process.env.STORAGE_PRESIGN_TTL || '300', 10),
+  },
 });
