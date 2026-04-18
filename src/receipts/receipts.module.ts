@@ -7,7 +7,11 @@ import { MerchantsModule } from '../merchants/merchants.module';
 import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Receipt]), MerchantsModule, StorageModule],
+  imports: [
+    TypeOrmModule.forFeature([Receipt]),
+    MerchantsModule,
+    StorageModule,
+  ],
   controllers: [ReceiptsController],
   providers: [ReceiptsService],
   exports: [ReceiptsService],
