@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
@@ -56,7 +60,10 @@ export class ReceiptsService {
     return this.receiptRepository.find({ where });
   }
 
-  async findOne(id: string, userId: string): Promise<Receipt & { photo_url: string | null }> {
+  async findOne(
+    id: string,
+    userId: string,
+  ): Promise<Receipt & { photo_url: string | null }> {
     const receipt = await this.receiptRepository.findOne({
       where: { id, userId },
       relations: ['expenses'],

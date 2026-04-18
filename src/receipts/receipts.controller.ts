@@ -7,7 +7,13 @@ import {
   Param,
   Delete,
   Query,
+  HttpCode,
+  HttpStatus,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { ReceiptsService } from './receipts.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { UpdateReceiptDto } from './dto/update-receipt.dto';
@@ -40,6 +46,27 @@ export class ReceiptsController {
     @Body() updateReceiptDto: UpdateReceiptDto,
   ) {
     return this.receiptsService.update(id, user.sub, updateReceiptDto);
+  }
+
+  @Post(':id/photo')
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+    }),
+  )
+  uploadPhoto(
+    @Param('id') id: string,
+    @CurrentUser() user,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.receiptsService.uploadPhoto(id, user.sub, file);
+  }
+
+  @Delete(':id/photo')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removePhoto(@Param('id') id: string, @CurrentUser() user) {
+    return this.receiptsService.removePhoto(id, user.sub);
   }
 
   @Delete(':id')

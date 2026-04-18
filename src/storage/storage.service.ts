@@ -44,7 +44,11 @@ export class StorageService implements OnModuleInit {
     }
   }
 
-  async upload(key: string, buffer: Buffer, contentType: string): Promise<void> {
+  async upload(
+    key: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
