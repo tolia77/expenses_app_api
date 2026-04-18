@@ -36,6 +36,9 @@ export class Receipt {
   @Column({ type: 'jsonb', nullable: true })
   other_details: object;
 
+  @Column({ nullable: true })
+  photo_key: string;
+
   @CreateDateColumn()
   created_at: Date;
 
