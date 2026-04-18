@@ -56,7 +56,7 @@ export class ReceiptsService {
     return this.receiptRepository.find({ where });
   }
 
-  async findOne(id: string, userId: string): Promise<Receipt> {
+  async findOne(id: string, userId: string): Promise<Receipt & { photo_url: string | null }> {
     const receipt = await this.receiptRepository.findOne({
       where: { id, userId },
       relations: ['expenses'],
@@ -64,7 +64,11 @@ export class ReceiptsService {
     if (!receipt) {
       throw new NotFoundException();
     }
-    return receipt;
+    const photo_url = receipt.photo_key
+      ? await this.storageService.getSignedUrl(receipt.photo_key)
+      : null;
+    (receipt as any).photo_url = photo_url;
+    return receipt as Receipt & { photo_url: string | null };
   }
 
   async update(
@@ -83,9 +87,87 @@ export class ReceiptsService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
-    const result = await this.receiptRepository.delete({ id, userId });
-    if (result.affected === 0) {
+    const receipt = await this.receiptRepository.findOne({
+      where: { id, userId },
+    });
+    if (!receipt) {
       throw new NotFoundException();
     }
+    if (receipt.photo_key) {
+      await this.storageService.delete(receipt.photo_key);
+    }
+    await this.receiptRepository.delete({ id: receipt.id });
+  }
+
+  async uploadPhoto(
+    id: string,
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<{ photo_url: string }> {
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new BadRequestException('photo file is required');
+    }
+
+    // 1) Ownership check (throws 404 before touching S3)
+    const receipt = await this.receiptRepository.findOne({
+      where: { id, userId },
+    });
+    if (!receipt) {
+      throw new NotFoundException();
+    }
+
+    // 2) Magic-byte MIME validation (throws 400 before touching S3)
+    const ext = await this.validateImageMime(file.buffer);
+    const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    // 3) Build key and upload NEW object first
+    const newKey = `receipts/${userId}/${id}/${randomUUID()}.${ext}`;
+    await this.storageService.upload(newKey, file.buffer, contentType);
+
+    // 4) Capture old key BEFORE overwriting, save new key
+    const oldKey = receipt.photo_key;
+    receipt.photo_key = newKey;
+    await this.receiptRepository.save(receipt);
+
+    // 5) Delete old object if it existed (non-fatal on failure — receipt
+    //    already points to the valid new key; worst case is an orphan.
+    //    RESEARCH.md Pattern 5 explicitly classifies this as acceptable
+    //    tech debt per user decision.)
+    if (oldKey) {
+      try {
+        await this.storageService.delete(oldKey);
+      } catch {
+        // orphaned old object — acceptable per Phase 7 scope
+      }
+    }
+
+    const photo_url = await this.storageService.getSignedUrl(newKey);
+    return { photo_url };
+  }
+
+  async removePhoto(id: string, userId: string): Promise<void> {
+    const receipt = await this.receiptRepository.findOne({
+      where: { id, userId },
+    });
+    if (!receipt) {
+      throw new NotFoundException();
+    }
+    if (!receipt.photo_key) {
+      throw new NotFoundException('Receipt has no photo');
+    }
+    // S3 first, then DB — per Locked Decision
+    await this.storageService.delete(receipt.photo_key);
+    receipt.photo_key = null as unknown as string;
+    await this.receiptRepository.save(receipt);
+  }
+
+  private async validateImageMime(buffer: Buffer): Promise<string> {
+    const { fileTypeFromBuffer } = await import('file-type');
+    const result = await fileTypeFromBuffer(buffer);
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!result || !allowed.includes(result.mime)) {
+      throw new BadRequestException('File must be a JPEG, PNG, or WebP image');
+    }
+    return result.ext; // 'jpg' | 'png' | 'webp'
   }
 }
