@@ -22,10 +22,7 @@ export class ReceiptsService {
     private storageService: StorageService,
   ) {}
 
-  async create(
-    userId: string,
-    createReceiptDto: CreateReceiptDto,
-  ): Promise<Receipt> {
+  async create(userId: string, createReceiptDto: CreateReceiptDto) {
     const { merchant_id, ...rest } = createReceiptDto;
     if (merchant_id) {
       await this.merchantsService.findOne(merchant_id, userId);
@@ -35,13 +32,11 @@ export class ReceiptsService {
       userId,
       merchant: merchant_id ? ({ id: merchant_id } as any) : null,
     });
-    return this.receiptRepository.save(receipt);
+    const saved = await this.receiptRepository.save(receipt);
+    return this.toResponse(saved);
   }
 
-  async findAll(
-    userId: string,
-    filter?: FilterReceiptsDto,
-  ): Promise<Receipt[]> {
+  async findAll(userId: string, filter?: FilterReceiptsDto) {
     const where: any = { userId };
     if (filter?.from && filter?.to) {
       where.purchased_at = Between(
@@ -57,40 +52,29 @@ export class ReceiptsService {
         new Date(filter.to + 'T23:59:59.999Z'),
       );
     }
-    return this.receiptRepository.find({ where });
+    const receipts = await this.receiptRepository.find({ where });
+    return Promise.all(receipts.map((r) => this.toResponse(r)));
   }
 
-  async findOne(
-    id: string,
-    userId: string,
-  ): Promise<Receipt & { photo_url: string | null }> {
-    const receipt = await this.receiptRepository.findOne({
-      where: { id, userId },
-      relations: ['expenses'],
-    });
-    if (!receipt) {
-      throw new NotFoundException();
-    }
-    const photo_url = receipt.photo_key
-      ? await this.storageService.getSignedUrl(receipt.photo_key)
-      : null;
-    (receipt as any).photo_url = photo_url;
-    return receipt as Receipt & { photo_url: string | null };
+  async findOne(id: string, userId: string) {
+    const receipt = await this.findOneEntity(id, userId);
+    return this.toResponse(receipt);
   }
 
   async update(
     id: string,
     userId: string,
     updateReceiptDto: UpdateReceiptDto,
-  ): Promise<Receipt> {
-    const receipt = await this.findOne(id, userId);
+  ) {
+    const receipt = await this.findOneEntity(id, userId);
     const { merchant_id, ...rest } = updateReceiptDto;
     if (merchant_id !== undefined) {
       await this.merchantsService.findOne(merchant_id, userId);
       receipt.merchant = { id: merchant_id } as any;
     }
     Object.assign(receipt, rest);
-    return this.receiptRepository.save(receipt);
+    const saved = await this.receiptRepository.save(receipt);
+    return this.toResponse(saved);
   }
 
   async remove(id: string, userId: string): Promise<void> {
@@ -176,5 +160,24 @@ export class ReceiptsService {
       throw new BadRequestException('File must be a JPEG, PNG, or WebP image');
     }
     return result.ext; // 'jpg' | 'png' | 'webp'
+  }
+
+  private async findOneEntity(id: string, userId: string): Promise<Receipt> {
+    const receipt = await this.receiptRepository.findOne({
+      where: { id, userId },
+      relations: ['expenses'],
+    });
+    if (!receipt) {
+      throw new NotFoundException();
+    }
+    return receipt;
+  }
+
+  private async toResponse(receipt: Receipt) {
+    const photo_url = receipt.photo_key
+      ? await this.storageService.getSignedUrl(receipt.photo_key)
+      : null;
+    const { photo_key: _photo_key, ...rest } = receipt;
+    return { ...rest, photo_url };
   }
 }
