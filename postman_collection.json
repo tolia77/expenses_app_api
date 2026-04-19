@@ -2,7 +2,7 @@
   "info": {
     "name": "Expenses App API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "NestJS Expenses Tracker API — all routes"
+    "description": "NestJS Expenses Tracker API — all routes. Phase 8: responses standardized with `{ data, meta }` envelope on list endpoints, `{ error: { code, message, details? } }` envelope on errors, snake_case keys throughout, nested `category` on expenses, `photo_url` (signed URL, no `photo_key`) on receipts."
   },
   "variable": [
     {
@@ -75,7 +75,45 @@
               "host": ["{{baseUrl}}"],
               "path": ["auth", "signup"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/auth/signup",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["auth", "signup"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            },
+            {
+              "name": "409 Email Already Exists",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"USER_ALREADY_EXISTS\",\n    \"message\": \"Email already registered\"\n  }\n}"
+            },
+            {
+              "name": "400 Validation Failed",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Validation failed\",\n    \"details\": [\n      { \"field\": \"email\", \"message\": \"email must be an email\" }\n    ]\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Login",
@@ -108,7 +146,23 @@
               "host": ["{{baseUrl}}"],
               "path": ["auth", "login"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            },
+            {
+              "name": "401 Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_CREDENTIALS\",\n    \"message\": \"Invalid credentials\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Me",
@@ -119,7 +173,23 @@
               "host": ["{{baseUrl}}"],
               "path": ["auth", "me"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n  \"email\": \"user@example.com\"\n}"
+            },
+            {
+              "name": "401 Unauthorized (no token)",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"Unauthorized\"\n  }\n}"
+            }
+          ]
         }
       ]
     },
@@ -156,18 +226,47 @@
               "host": ["{{baseUrl}}"],
               "path": ["categories"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n  \"name\": \"Groceries\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
+            }
+          ]
         },
         {
           "name": "Get All Categories",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/categories",
+              "raw": "{{baseUrl}}/categories?page=1&limit=20",
               "host": ["{{baseUrl}}"],
-              "path": ["categories"]
+              "path": ["categories"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n      \"name\": \"Groceries\",\n      \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}"
+            },
+            {
+              "name": "400 Validation Failed (limit out of range)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Validation failed\",\n    \"details\": [\n      { \"field\": \"limit\", \"message\": \"limit must not be greater than 100\" }\n    ]\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Get Category by ID",
@@ -178,7 +277,23 @@
               "host": ["{{baseUrl}}"],
               "path": ["categories", "{{categoryId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n  \"name\": \"Groceries\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
+            },
+            {
+              "name": "404 Category Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"CATEGORY_NOT_FOUND\",\n    \"message\": \"Category not found\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Update Category",
@@ -196,7 +311,16 @@
               "host": ["{{baseUrl}}"],
               "path": ["categories", "{{categoryId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n  \"name\": \"Food & Dining\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
+            }
+          ]
         },
         {
           "name": "Delete Category",
@@ -207,7 +331,16 @@
               "host": ["{{baseUrl}}"],
               "path": ["categories", "{{categoryId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            }
+          ]
         }
       ]
     },
@@ -244,18 +377,40 @@
               "host": ["{{baseUrl}}"],
               "path": ["merchants"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n  \"name\": \"Walmart\",\n  \"address\": \"123 Main St\",\n  \"other_details\": { \"type\": \"retail\" },\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
+            }
+          ]
         },
         {
           "name": "Get All Merchants",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/merchants",
+              "raw": "{{baseUrl}}/merchants?page=1&limit=20",
               "host": ["{{baseUrl}}"],
-              "path": ["merchants"]
+              "path": ["merchants"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n      \"name\": \"Walmart\",\n      \"address\": \"123 Main St\",\n      \"other_details\": { \"type\": \"retail\" },\n      \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Get Merchant by ID",
@@ -266,7 +421,23 @@
               "host": ["{{baseUrl}}"],
               "path": ["merchants", "{{merchantId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n  \"name\": \"Walmart\",\n  \"address\": \"123 Main St\",\n  \"other_details\": { \"type\": \"retail\" },\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
+            },
+            {
+              "name": "404 Merchant Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"MERCHANT_NOT_FOUND\",\n    \"message\": \"Merchant not found\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Update Merchant",
@@ -284,7 +455,16 @@
               "host": ["{{baseUrl}}"],
               "path": ["merchants", "{{merchantId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n  \"name\": \"Walmart Supercenter\",\n  \"address\": \"123 Main St\",\n  \"other_details\": { \"type\": \"retail\" },\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
+            }
+          ]
         },
         {
           "name": "Delete Merchant",
@@ -295,7 +475,16 @@
               "host": ["{{baseUrl}}"],
               "path": ["merchants", "{{merchantId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            }
+          ]
         }
       ]
     },
@@ -332,33 +521,73 @@
               "host": ["{{baseUrl}}"],
               "path": ["receipts"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n  \"merchant\": {\n    \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n    \"name\": \"Walmart\",\n    \"address\": \"123 Main St\",\n    \"other_details\": { \"type\": \"retail\" },\n    \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n  },\n  \"payment_method\": \"credit_card\",\n  \"purchased_at\": \"2026-04-15T12:00:00.000Z\",\n  \"other_details\": { \"store_number\": \"42\" },\n  \"photo_url\": null,\n  \"created_at\": \"2026-04-18T12:00:00.000Z\"\n}"
+            },
+            {
+              "name": "404 Merchant Not Found (cross-user merchant_id)",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"MERCHANT_NOT_FOUND\",\n    \"message\": \"Merchant not found\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Get All Receipts",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/receipts",
-              "host": ["{{baseUrl}}"],
-              "path": ["receipts"]
-            }
-          }
-        },
-        {
-          "name": "Get All Receipts (with date filter)",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/receipts?from=2026-01-01&to=2026-12-31",
+              "raw": "{{baseUrl}}/receipts?page=1&limit=20",
               "host": ["{{baseUrl}}"],
               "path": ["receipts"],
               "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n      \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n      \"merchant\": {\n        \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n        \"name\": \"Walmart\",\n        \"address\": \"123 Main St\",\n        \"other_details\": null,\n        \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n      },\n      \"payment_method\": \"credit_card\",\n      \"purchased_at\": \"2026-04-15T12:00:00.000Z\",\n      \"other_details\": null,\n      \"photo_url\": null,\n      \"created_at\": \"2026-04-18T12:00:00.000Z\",\n      \"expenses\": []\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get All Receipts (with date filter + pagination)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/receipts?page=1&limit=5&from=2026-01-01&to=2026-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" },
                 { "key": "from", "value": "2026-01-01" },
                 { "key": "to", "value": "2026-12-31" }
               ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK (filtered)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [],\n  \"meta\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 5\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Get Receipt by ID",
@@ -369,7 +598,23 @@
               "host": ["{{baseUrl}}"],
               "path": ["receipts", "{{receiptId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n  \"merchant\": {\n    \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n    \"name\": \"Walmart\",\n    \"address\": \"123 Main St\",\n    \"other_details\": null,\n    \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n  },\n  \"payment_method\": \"credit_card\",\n  \"purchased_at\": \"2026-04-15T12:00:00.000Z\",\n  \"other_details\": { \"store_number\": \"42\" },\n  \"photo_url\": null,\n  \"created_at\": \"2026-04-18T12:00:00.000Z\",\n  \"expenses\": []\n}"
+            },
+            {
+              "name": "404 Receipt Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"RECEIPT_NOT_FOUND\",\n    \"message\": \"Receipt not found\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Update Receipt",
@@ -387,7 +632,88 @@
               "host": ["{{baseUrl}}"],
               "path": ["receipts", "{{receiptId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n  \"merchant\": {\n    \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n    \"name\": \"Walmart\",\n    \"address\": \"123 Main St\",\n    \"other_details\": null,\n    \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n  },\n  \"payment_method\": \"cash\",\n  \"purchased_at\": \"2026-04-15T12:00:00.000Z\",\n  \"other_details\": { \"store_number\": \"42\" },\n  \"photo_url\": null,\n  \"created_at\": \"2026-04-18T12:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Receipt Photo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/{{receiptId}}/photo",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts", "{{receiptId}}", "photo"]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"photo_url\": \"http://localhost:9000/receipts/receipts/d4e5f6a7.../photo.jpg?X-Amz-Signature=...\"\n}"
+            },
+            {
+              "name": "400 Invalid Photo Type (.txt)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_PHOTO_TYPE\",\n    \"message\": \"Invalid photo type. Only JPEG and PNG are allowed.\"\n  }\n}"
+            },
+            {
+              "name": "400 Photo Required (no file)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"PHOTO_REQUIRED\",\n    \"message\": \"Photo file is required\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Receipt Photo",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/receipts/{{receiptId}}/photo",
+              "host": ["{{baseUrl}}"],
+              "path": ["receipts", "{{receiptId}}", "photo"]
+            }
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            },
+            {
+              "name": "404 Receipt Has No Photo",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"RECEIPT_HAS_NO_PHOTO\",\n    \"message\": \"Receipt has no photo\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Delete Receipt",
@@ -398,7 +724,16 @@
               "host": ["{{baseUrl}}"],
               "path": ["receipts", "{{receiptId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            }
+          ]
         }
       ]
     },
@@ -435,32 +770,72 @@
               "host": ["{{baseUrl}}"],
               "path": ["receipts", "{{receiptId}}", "expenses"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"e5f6a7b8-c9d0-4123-8456-789abcdef012\",\n  \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"category\": {\n    \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"name\": \"Groceries\",\n    \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n  },\n  \"name\": \"Milk\",\n  \"price\": \"3.99\",\n  \"unit_type\": \"gallon\",\n  \"amount\": \"1.00\",\n  \"other_details\": { \"brand\": \"Organic Valley\" }\n}"
+            },
+            {
+              "name": "404 Category Not Found (cross-user category_id)",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"CATEGORY_NOT_FOUND\",\n    \"message\": \"Category not found\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Get All Expenses",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/expenses",
+              "raw": "{{baseUrl}}/expenses?page=1&limit=20",
               "host": ["{{baseUrl}}"],
-              "path": ["expenses"]
+              "path": ["expenses"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"e5f6a7b8-c9d0-4123-8456-789abcdef012\",\n      \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n      \"category\": {\n        \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n        \"name\": \"Groceries\",\n        \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n      },\n      \"name\": \"Milk\",\n      \"price\": \"3.99\",\n      \"unit_type\": \"gallon\",\n      \"amount\": \"1.00\",\n      \"other_details\": { \"brand\": \"Organic Valley\" }\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Search Expenses",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/expenses?search=coffee",
+              "raw": "{{baseUrl}}/expenses?search=coffee&page=1&limit=10",
               "host": ["{{baseUrl}}"],
               "path": ["expenses"],
               "query": [
-                { "key": "search", "value": "coffee" }
+                { "key": "search", "value": "coffee" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
               ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"f6a7b8c9-d0e1-4234-8567-89abcdef0123\",\n      \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n      \"category\": {\n        \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n        \"name\": \"Groceries\",\n        \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n      },\n      \"name\": \"Coffee\",\n      \"price\": \"4.50\",\n      \"unit_type\": null,\n      \"amount\": \"1.00\",\n      \"other_details\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Get Expense by ID",
@@ -471,7 +846,23 @@
               "host": ["{{baseUrl}}"],
               "path": ["expenses", "{{expenseId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"e5f6a7b8-c9d0-4123-8456-789abcdef012\",\n  \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"category\": {\n    \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"name\": \"Groceries\",\n    \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n  },\n  \"name\": \"Milk\",\n  \"price\": \"3.99\",\n  \"unit_type\": \"gallon\",\n  \"amount\": \"1.00\",\n  \"other_details\": { \"brand\": \"Organic Valley\" }\n}"
+            },
+            {
+              "name": "404 Expense Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"EXPENSE_NOT_FOUND\",\n    \"message\": \"Expense not found\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Update Expense",
@@ -489,7 +880,16 @@
               "host": ["{{baseUrl}}"],
               "path": ["expenses", "{{expenseId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"e5f6a7b8-c9d0-4123-8456-789abcdef012\",\n  \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"category\": {\n    \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"name\": \"Groceries\",\n    \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n  },\n  \"name\": \"Whole Milk\",\n  \"price\": \"4.49\",\n  \"unit_type\": \"gallon\",\n  \"amount\": \"1.00\",\n  \"other_details\": { \"brand\": \"Organic Valley\" }\n}"
+            }
+          ]
         },
         {
           "name": "Delete Expense",
@@ -500,7 +900,16 @@
               "host": ["{{baseUrl}}"],
               "path": ["expenses", "{{expenseId}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            }
+          ]
         }
       ]
     },
@@ -519,7 +928,16 @@
                 { "key": "period", "value": "month" }
               ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK (no envelope — aggregate shape)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"category_id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"category_name\": \"Groceries\",\n    \"total\": 12.5\n  }\n]"
+            }
+          ]
         },
         {
           "name": "By Category (custom range)",
@@ -535,7 +953,23 @@
                 { "key": "to", "value": "2026-12-31" }
               ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"category_id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"category_name\": \"Groceries\",\n    \"total\": 47.25\n  }\n]"
+            },
+            {
+              "name": "400 Validation Failed (custom without from/to)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Validation failed\",\n    \"details\": [\n      { \"field\": \"from\", \"message\": \"from should not be empty\" },\n      { \"field\": \"to\", \"message\": \"to should not be empty\" }\n    ]\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Total (week)",
@@ -549,7 +983,16 @@
                 { "key": "period", "value": "week" }
               ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK (no envelope — aggregate shape)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"total\": 12.5\n}"
+            }
+          ]
         },
         {
           "name": "Total (custom range)",
@@ -565,7 +1008,16 @@
                 { "key": "to", "value": "2026-12-31" }
               ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"total\": 147.25\n}"
+            }
+          ]
         }
       ]
     }
