@@ -18,17 +18,20 @@ export class MerchantsService {
   ): Promise<Merchant> {
     const merchant = this.merchantRepository.create({
       ...createMerchantDto,
-      userId,
+      user_id: userId,
     });
     return this.merchantRepository.save(merchant);
   }
 
   async findAll(userId: string): Promise<Merchant[]> {
-    return this.merchantRepository.find({ where: { userId } });
+    return this.merchantRepository.find({ where: { user_id: userId } });
   }
 
   async findOne(id: string, userId: string): Promise<Merchant> {
-    const merchant = await this.merchantRepository.findOneBy({ id, userId });
+    const merchant = await this.merchantRepository.findOneBy({
+      id,
+      user_id: userId,
+    });
     if (!merchant) {
       throw new NotFoundException();
     }
@@ -46,7 +49,10 @@ export class MerchantsService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
-    const result = await this.merchantRepository.delete({ id, userId });
+    const result = await this.merchantRepository.delete({
+      id,
+      user_id: userId,
+    });
     if (result.affected === 0) {
       throw new NotFoundException();
     }

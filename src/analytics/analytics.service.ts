@@ -17,18 +17,18 @@ export class AnalyticsService {
       .createQueryBuilder('expense')
       .innerJoin('expense.receipt', 'receipt')
       .innerJoin('expense.category', 'category')
-      .select('category.id', 'categoryId')
-      .addSelect('category.name', 'categoryName')
+      .select('category.id', 'category_id')
+      .addSelect('category.name', 'category_name')
       .addSelect('SUM(expense.price * COALESCE(expense.amount, 1))', 'total')
-      .where('receipt.userId = :userId', { userId })
+      .where('receipt.user_id = :userId', { userId })
       .andWhere('receipt.purchased_at BETWEEN :start AND :end', { start, end })
       .groupBy('category.id')
       .addGroupBy('category.name')
       .getRawMany();
 
     return rows.map((r) => ({
-      categoryId: r.categoryId,
-      categoryName: r.categoryName,
+      category_id: r.category_id,
+      category_name: r.category_name,
       total: parseFloat(r.total ?? '0') || 0,
     }));
   }
@@ -39,7 +39,7 @@ export class AnalyticsService {
       .createQueryBuilder('expense')
       .innerJoin('expense.receipt', 'receipt')
       .select('SUM(expense.price * COALESCE(expense.amount, 1))', 'total')
-      .where('receipt.userId = :userId', { userId })
+      .where('receipt.user_id = :userId', { userId })
       .andWhere('receipt.purchased_at BETWEEN :start AND :end', { start, end })
       .getRawOne();
 

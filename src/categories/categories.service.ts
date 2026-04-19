@@ -13,7 +13,7 @@ export class CategoriesService {
   ) {}
 
   async findAll(userId: string): Promise<Category[]> {
-    return this.categoryRepository.find({ where: { userId } });
+    return this.categoryRepository.find({ where: { user_id: userId } });
   }
 
   async create(
@@ -22,13 +22,16 @@ export class CategoriesService {
   ): Promise<Category> {
     const category = this.categoryRepository.create({
       ...categoryCreateDto,
-      userId,
+      user_id: userId,
     });
     return this.categoryRepository.save(category);
   }
 
   async findOne(id: string, userId: string): Promise<Category> {
-    const category = await this.categoryRepository.findOneBy({ id, userId });
+    const category = await this.categoryRepository.findOneBy({
+      id,
+      user_id: userId,
+    });
     if (!category) {
       throw new NotFoundException();
     }
@@ -46,7 +49,10 @@ export class CategoriesService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
-    const result = await this.categoryRepository.delete({ id, userId });
+    const result = await this.categoryRepository.delete({
+      id,
+      user_id: userId,
+    });
     if (result.affected === 0) {
       throw new NotFoundException();
     }

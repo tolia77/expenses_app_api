@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   OneToMany,
   ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 
 @Entity()
@@ -22,10 +23,11 @@ export class Merchant {
   @Column('jsonb', { nullable: true })
   other_details: object;
 
-  @Column()
-  userId: string;
+  @Column({ name: 'user_id' })
+  user_id: string;
 
   @ManyToOne(() => User)
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
   @OneToMany(() => Receipt, (receipt) => receipt.merchant)

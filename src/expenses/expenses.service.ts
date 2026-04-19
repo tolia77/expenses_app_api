@@ -26,7 +26,7 @@ export class ExpensesService {
       .innerJoin('expense.receipt', 'receipt')
       .leftJoin('receipt.merchant', 'merchant')
       .innerJoin('expense.category', 'category')
-      .where('receipt.userId = :userId', { userId });
+      .where('receipt.user_id = :userId', { userId });
 
     if (filter?.search && filter.search.trim() !== '') {
       qb.andWhere(
@@ -52,9 +52,9 @@ export class ExpensesService {
 
     const expense = this.expenseRepository.create({
       ...rest,
-      receiptId,
+      receipt_id: receiptId,
       category: { id: category_id } as any,
-      categoryId: category_id,
+      category_id: category_id,
     });
     return this.expenseRepository.save(expense);
   }
@@ -64,7 +64,7 @@ export class ExpensesService {
       where: { id },
       relations: ['receipt'],
     });
-    if (!expense || expense.receipt.userId !== userId) {
+    if (!expense || expense.receipt.user_id !== userId) {
       throw new NotFoundException();
     }
     return expense;
@@ -80,7 +80,7 @@ export class ExpensesService {
     if (category_id !== undefined) {
       await this.categoriesService.findOne(category_id, userId);
       expense.category = { id: category_id } as any;
-      expense.categoryId = category_id;
+      expense.category_id = category_id;
     }
     Object.assign(expense, rest);
     return this.expenseRepository.save(expense);

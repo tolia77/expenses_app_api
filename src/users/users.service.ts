@@ -14,7 +14,7 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
-  create(data: { email: string; passwordHash: string }): Promise<User> {
+  create(data: { email: string; password_hash: string }): Promise<User> {
     return this.usersRepository.save(this.usersRepository.create(data));
   }
 }

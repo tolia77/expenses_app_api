@@ -22,12 +22,12 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const password_hash = await bcrypt.hash(dto.password, 10);
 
     try {
       const user = await this.usersService.create({
         email: dto.email,
-        passwordHash,
+        password_hash,
       });
       const token = await this.jwtService.signAsync({
         sub: user.id,
@@ -48,7 +48,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordMatch = await bcrypt.compare(dto.password, user.passwordHash);
+    const passwordMatch = await bcrypt.compare(
+      dto.password,
+      user.password_hash,
+    );
     if (!passwordMatch) {
       throw new UnauthorizedException('Invalid credentials');
     }

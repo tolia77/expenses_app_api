@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Receipt } from 'src/receipts/entities/receipt.entity';
 import { Category } from 'src/categories/category.entity';
 
@@ -7,18 +13,20 @@ export class Expense {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  receiptId: string;
+  @Column({ name: 'receipt_id' })
+  receipt_id: string;
 
   @ManyToOne(() => Receipt, (receipt) => receipt.expenses, {
     onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'receipt_id' })
   receipt: Receipt;
 
-  @Column()
-  categoryId: string;
+  @Column({ name: 'category_id' })
+  category_id: string;
 
   @ManyToOne(() => Category)
+  @JoinColumn({ name: 'category_id' })
   category: Category;
 
   @Column()
