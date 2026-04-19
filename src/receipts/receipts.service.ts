@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
@@ -12,6 +8,7 @@ import { UpdateReceiptDto } from './dto/update-receipt.dto';
 import { FilterReceiptsDto } from './dto/filter-receipts.dto';
 import { MerchantsService } from '../merchants/merchants.service';
 import { StorageService } from '../storage/storage.service';
+import { AppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class ReceiptsService {
@@ -78,7 +75,11 @@ export class ReceiptsService {
       where: { id, user_id: userId },
     });
     if (!receipt) {
-      throw new NotFoundException();
+      throw new AppException(
+        'RECEIPT_NOT_FOUND',
+        'Receipt not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
     if (receipt.photo_key) {
       await this.storageService.delete(receipt.photo_key);
@@ -92,7 +93,11 @@ export class ReceiptsService {
     file: Express.Multer.File,
   ): Promise<{ photo_url: string }> {
     if (!file || !file.buffer || file.buffer.length === 0) {
-      throw new BadRequestException('photo file is required');
+      throw new AppException(
+        'PHOTO_REQUIRED',
+        'Photo file is required',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // 1) Ownership check (throws 404 before touching S3)
@@ -100,7 +105,11 @@ export class ReceiptsService {
       where: { id, user_id: userId },
     });
     if (!receipt) {
-      throw new NotFoundException();
+      throw new AppException(
+        'RECEIPT_NOT_FOUND',
+        'Receipt not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     // 2) Magic-byte MIME validation (throws 400 before touching S3)
@@ -137,10 +146,18 @@ export class ReceiptsService {
       where: { id, user_id: userId },
     });
     if (!receipt) {
-      throw new NotFoundException();
+      throw new AppException(
+        'RECEIPT_NOT_FOUND',
+        'Receipt not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
     if (!receipt.photo_key) {
-      throw new NotFoundException('Receipt has no photo');
+      throw new AppException(
+        'RECEIPT_HAS_NO_PHOTO',
+        'Receipt has no photo',
+        HttpStatus.NOT_FOUND,
+      );
     }
     // S3 first, then DB — per Locked Decision
     await this.storageService.delete(receipt.photo_key);
@@ -153,7 +170,11 @@ export class ReceiptsService {
     const result = await fileTypeFromBuffer(buffer);
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (!result || !allowed.includes(result.mime)) {
-      throw new BadRequestException('File must be a JPEG, PNG, or WebP image');
+      throw new AppException(
+        'INVALID_PHOTO_TYPE',
+        'File must be a JPEG, PNG, or WebP image',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     return result.ext; // 'jpg' | 'png' | 'webp'
   }
@@ -164,7 +185,11 @@ export class ReceiptsService {
       relations: ['expenses'],
     });
     if (!receipt) {
-      throw new NotFoundException();
+      throw new AppException(
+        'RECEIPT_NOT_FOUND',
+        'Receipt not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
     return receipt;
   }
