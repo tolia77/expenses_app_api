@@ -30,7 +30,7 @@ export class ReceiptsService {
       merchant: merchant_id ? ({ id: merchant_id } as any) : null,
     });
     const saved = await this.receiptRepository.save(receipt);
-    return this.toResponse(saved);
+    return this.attachPhotoUrl(saved);
   }
 
   async findAll(userId: string, filter?: FilterReceiptsDto) {
@@ -49,13 +49,16 @@ export class ReceiptsService {
         new Date(filter.to + 'T23:59:59.999Z'),
       );
     }
-    const receipts = await this.receiptRepository.find({ where });
-    return Promise.all(receipts.map((r) => this.toResponse(r)));
+    const receipts = await this.receiptRepository.find({
+      where,
+      relations: ['expenses'],
+    });
+    return Promise.all(receipts.map((r) => this.attachPhotoUrl(r)));
   }
 
   async findOne(id: string, userId: string) {
     const receipt = await this.findOneEntity(id, userId);
-    return this.toResponse(receipt);
+    return this.attachPhotoUrl(receipt);
   }
 
   async update(id: string, userId: string, updateReceiptDto: UpdateReceiptDto) {
@@ -67,7 +70,7 @@ export class ReceiptsService {
     }
     Object.assign(receipt, rest);
     const saved = await this.receiptRepository.save(receipt);
-    return this.toResponse(saved);
+    return this.attachPhotoUrl(saved);
   }
 
   async remove(id: string, userId: string): Promise<void> {
@@ -194,11 +197,10 @@ export class ReceiptsService {
     return receipt;
   }
 
-  private async toResponse(receipt: Receipt) {
-    const photo_url = receipt.photo_key
+  private async attachPhotoUrl(receipt: Receipt): Promise<Receipt> {
+    receipt.photo_url = receipt.photo_key
       ? await this.storageService.getSignedUrl(receipt.photo_key)
       : null;
-    const { photo_key: _photo_key, ...rest } = receipt;
-    return { ...rest, photo_url };
+    return receipt;
   }
 }
