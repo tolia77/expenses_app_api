@@ -5,6 +5,8 @@ import { Repository } from 'typeorm';
 import { CategoryCreateDto } from './dto/category-create.dto';
 import { CategoryUpdateDto } from './dto/category-update.dto';
 import { AppException } from '../common/exceptions/app.exception';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { Paginated } from '../common/dto/paginated-response.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -13,8 +15,19 @@ export class CategoriesService {
     private categoryRepository: Repository<Category>,
   ) {}
 
-  async findAll(userId: string): Promise<Category[]> {
-    return this.categoryRepository.find({ where: { user_id: userId } });
+  async findAll(userId: string, pagination: PaginationDto) {
+    const page = pagination.page ?? 1;
+    const limit = pagination.limit ?? 20;
+    const [data, total] = await this.categoryRepository.findAndCount({
+      where: { user_id: userId },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    const klass = Paginated(Category);
+    return Object.assign(new klass(), {
+      data,
+      meta: { total, page, limit },
+    });
   }
 
   async create(
