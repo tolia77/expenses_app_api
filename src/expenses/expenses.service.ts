@@ -26,7 +26,7 @@ export class ExpensesService {
       .createQueryBuilder('expense')
       .innerJoin('expense.receipt', 'receipt')
       .leftJoin('receipt.merchant', 'merchant')
-      .innerJoin('expense.category', 'category')
+      .innerJoinAndSelect('expense.category', 'category')
       .where('receipt.user_id = :userId', { userId });
 
     if (filter?.search && filter.search.trim() !== '') {
@@ -69,7 +69,7 @@ export class ExpensesService {
   async findOne(id: string, userId: string): Promise<Expense> {
     const expense = await this.expenseRepository.findOne({
       where: { id },
-      relations: ['receipt'],
+      relations: ['receipt', 'category'],
     });
     if (!expense || expense.receipt.user_id !== userId) {
       throw new AppException(

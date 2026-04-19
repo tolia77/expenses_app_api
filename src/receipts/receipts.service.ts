@@ -54,7 +54,7 @@ export class ReceiptsService {
     }
     const [receipts, total] = await this.receiptRepository.findAndCount({
       where,
-      relations: ['expenses'],
+      relations: ['expenses', 'expenses.category'],
       skip: (page - 1) * limit,
       take: limit,
     });
@@ -195,7 +195,7 @@ export class ReceiptsService {
   private async findOneEntity(id: string, userId: string): Promise<Receipt> {
     const receipt = await this.receiptRepository.findOne({
       where: { id, user_id: userId },
-      relations: ['expenses'],
+      relations: ['expenses', 'expenses.category'],
     });
     if (!receipt) {
       throw new AppException(
