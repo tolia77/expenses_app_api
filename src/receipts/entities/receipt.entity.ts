@@ -8,6 +8,7 @@ import {
   ManyToOne,
   OneToMany,
   CreateDateColumn,
+  JoinColumn,
 } from 'typeorm';
 
 @Entity()
@@ -15,16 +16,18 @@ export class Receipt {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  userId: string;
+  @Column({ name: 'user_id' })
+  user_id: string;
 
   @ManyToOne(() => User)
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
   @ManyToOne(() => Merchant, (merchant) => merchant.receipts, {
     nullable: true,
     eager: true,
   })
+  @JoinColumn({ name: 'merchant_id' })
   merchant: Merchant;
 
   @Column({ nullable: true })

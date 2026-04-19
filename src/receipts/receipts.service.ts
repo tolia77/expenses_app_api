@@ -29,7 +29,7 @@ export class ReceiptsService {
     }
     const receipt = this.receiptRepository.create({
       ...rest,
-      userId,
+      user_id: userId,
       merchant: merchant_id ? ({ id: merchant_id } as any) : null,
     });
     const saved = await this.receiptRepository.save(receipt);
@@ -37,7 +37,7 @@ export class ReceiptsService {
   }
 
   async findAll(userId: string, filter?: FilterReceiptsDto) {
-    const where: any = { userId };
+    const where: any = { user_id: userId };
     if (filter?.from && filter?.to) {
       where.purchased_at = Between(
         new Date(filter.from + 'T00:00:00.000Z'),
@@ -61,11 +61,7 @@ export class ReceiptsService {
     return this.toResponse(receipt);
   }
 
-  async update(
-    id: string,
-    userId: string,
-    updateReceiptDto: UpdateReceiptDto,
-  ) {
+  async update(id: string, userId: string, updateReceiptDto: UpdateReceiptDto) {
     const receipt = await this.findOneEntity(id, userId);
     const { merchant_id, ...rest } = updateReceiptDto;
     if (merchant_id !== undefined) {
@@ -79,7 +75,7 @@ export class ReceiptsService {
 
   async remove(id: string, userId: string): Promise<void> {
     const receipt = await this.receiptRepository.findOne({
-      where: { id, userId },
+      where: { id, user_id: userId },
     });
     if (!receipt) {
       throw new NotFoundException();
@@ -101,7 +97,7 @@ export class ReceiptsService {
 
     // 1) Ownership check (throws 404 before touching S3)
     const receipt = await this.receiptRepository.findOne({
-      where: { id, userId },
+      where: { id, user_id: userId },
     });
     if (!receipt) {
       throw new NotFoundException();
@@ -138,7 +134,7 @@ export class ReceiptsService {
 
   async removePhoto(id: string, userId: string): Promise<void> {
     const receipt = await this.receiptRepository.findOne({
-      where: { id, userId },
+      where: { id, user_id: userId },
     });
     if (!receipt) {
       throw new NotFoundException();
@@ -164,7 +160,7 @@ export class ReceiptsService {
 
   private async findOneEntity(id: string, userId: string): Promise<Receipt> {
     const receipt = await this.receiptRepository.findOne({
-      where: { id, userId },
+      where: { id, user_id: userId },
       relations: ['expenses'],
     });
     if (!receipt) {
