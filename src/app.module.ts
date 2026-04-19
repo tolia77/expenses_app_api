@@ -1,4 +1,4 @@
-import { ClassSerializerInterceptor, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -13,6 +13,7 @@ import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { WhitelistSerializerInterceptor } from './common/interceptors/whitelist-serializer.interceptor';
 
 @Module({
   imports: [
@@ -34,7 +35,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
     {
       provide: APP_INTERCEPTOR,
       useFactory: (reflector: Reflector) =>
-        new ClassSerializerInterceptor(reflector, {
+        new WhitelistSerializerInterceptor(reflector, {
           strategy: 'excludeAll',
           excludeExtraneousValues: true,
         }),
