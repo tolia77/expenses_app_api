@@ -1,3 +1,4 @@
+import { Exclude, Expose } from 'class-transformer';
 import {
   Entity,
   Column,
@@ -8,12 +9,15 @@ import {
 
 @Entity()
 export class User {
+  @Expose()
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Expose()
   @Column({ unique: true })
   email: string;
 
+  @Exclude()
   @Column({ name: 'password_hash' })
   password_hash: string;
 

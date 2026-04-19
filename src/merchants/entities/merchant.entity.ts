@@ -1,3 +1,4 @@
+import { Exclude, Expose } from 'class-transformer';
 import { Receipt } from 'src/receipts/entities/receipt.entity';
 import { User } from 'src/users/user.entity';
 import {
@@ -11,25 +12,32 @@ import {
 
 @Entity()
 export class Merchant {
+  @Expose()
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Expose()
   @Column()
   name: string;
 
+  @Expose()
   @Column({ nullable: true })
   address: string;
 
+  @Expose()
   @Column('jsonb', { nullable: true })
   other_details: object;
 
+  @Expose()
   @Column({ name: 'user_id' })
   user_id: string;
 
+  @Exclude()
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Exclude()
   @OneToMany(() => Receipt, (receipt) => receipt.merchant)
   receipts: Receipt[];
 }
