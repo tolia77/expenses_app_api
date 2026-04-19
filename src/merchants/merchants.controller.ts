@@ -6,11 +6,13 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { MerchantsService } from './merchants.service';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Controller('merchants')
 export class MerchantsController {
@@ -22,8 +24,8 @@ export class MerchantsController {
   }
 
   @Get()
-  findAll(@CurrentUser() user) {
-    return this.merchantsService.findAll(user.sub);
+  findAll(@CurrentUser() user, @Query() pagination: PaginationDto) {
+    return this.merchantsService.findAll(user.sub, pagination);
   }
 
   @Get(':id')

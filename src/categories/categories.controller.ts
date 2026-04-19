@@ -6,19 +6,21 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CategoryCreateDto } from './dto/category-create.dto';
 import { CategoryUpdateDto } from './dto/category-update.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Get()
-  async findAll(@CurrentUser() user) {
-    return this.categoriesService.findAll(user.sub);
+  async findAll(@CurrentUser() user, @Query() pagination: PaginationDto) {
+    return this.categoriesService.findAll(user.sub, pagination);
   }
 
   @Get(':id')
