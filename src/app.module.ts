@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { ClassSerializerInterceptor, Module } from '@nestjs/common';
+import { APP_FILTER, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
@@ -31,6 +31,15 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
   providers: [
     AppService,
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    {
+      provide: APP_INTERCEPTOR,
+      useFactory: (reflector: Reflector) =>
+        new ClassSerializerInterceptor(reflector, {
+          strategy: 'excludeAll',
+          excludeExtraneousValues: true,
+        }),
+      inject: [Reflector],
+    },
   ],
 })
 export class AppModule {}
