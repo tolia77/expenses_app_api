@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from './category.entity';
 import { Repository } from 'typeorm';
 import { CategoryCreateDto } from './dto/category-create.dto';
 import { CategoryUpdateDto } from './dto/category-update.dto';
+import { AppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class CategoriesService {
@@ -33,7 +34,11 @@ export class CategoriesService {
       user_id: userId,
     });
     if (!category) {
-      throw new NotFoundException();
+      throw new AppException(
+        'CATEGORY_NOT_FOUND',
+        'Category not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
     return category;
   }
@@ -54,7 +59,11 @@ export class CategoriesService {
       user_id: userId,
     });
     if (result.affected === 0) {
-      throw new NotFoundException();
+      throw new AppException(
+        'CATEGORY_NOT_FOUND',
+        'Category not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
   }
 }

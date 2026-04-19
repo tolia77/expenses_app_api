@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Merchant } from './entities/merchant.entity';
 import { Repository } from 'typeorm';
+import { AppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class MerchantsService {
@@ -33,7 +34,11 @@ export class MerchantsService {
       user_id: userId,
     });
     if (!merchant) {
-      throw new NotFoundException();
+      throw new AppException(
+        'MERCHANT_NOT_FOUND',
+        'Merchant not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
     return merchant;
   }
@@ -54,7 +59,11 @@ export class MerchantsService {
       user_id: userId,
     });
     if (result.affected === 0) {
-      throw new NotFoundException();
+      throw new AppException(
+        'MERCHANT_NOT_FOUND',
+        'Merchant not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
   }
 }

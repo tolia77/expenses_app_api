@@ -1,14 +1,15 @@
 import {
   CanActivate,
   ExecutionContext,
+  HttpStatus,
   Injectable,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from './decorators/public.decorator';
+import { AppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -30,7 +31,11 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
-      throw new UnauthorizedException();
+      throw new AppException(
+        'UNAUTHORIZED',
+        'Unauthorized',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     try {
@@ -39,7 +44,11 @@ export class AuthGuard implements CanActivate {
       });
       request['user'] = payload;
     } catch {
-      throw new UnauthorizedException();
+      throw new AppException(
+        'UNAUTHORIZED',
+        'Unauthorized',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     return true;
