@@ -30,6 +30,8 @@ services:
   garage:
     image: dxflrs/garage:v2.3.0
     hostname: garage
+    ports:
+      - '3900:3900'
     environment:
       GARAGE_DEFAULT_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
       GARAGE_DEFAULT_SECRET_KEY: ${STORAGE_SECRET}
