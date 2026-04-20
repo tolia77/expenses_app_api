@@ -7,6 +7,7 @@ import AppDataSource from 'src/config/typeorm.config';
 import { Expense } from 'src/expenses/expenses.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Receipt } from 'src/receipts/entities/receipt.entity';
+import { ReceiptParse } from 'src/receipt-parse/receipt-parse.entity';
 import { User } from 'src/users/user.entity';
 
 @Module({
@@ -22,7 +23,7 @@ import { User } from 'src/users/user.entity';
         username: config.get<string>('database.username'),
         password: config.get<string>('database.password'),
         database: config.get<string>('database.database'),
-        entities: [Category, Expense, Merchant, Receipt, User],
+        entities: [Category, Expense, Merchant, Receipt, ReceiptParse, User],
         synchronize: false,
       }),
     }),
