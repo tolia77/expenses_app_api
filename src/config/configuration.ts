@@ -20,4 +20,13 @@ export default () => ({
     region: process.env.STORAGE_REGION || 'us-east-1',
     presignTtl: parseInt(process.env.STORAGE_PRESIGN_TTL || '300', 10),
   },
+  redis: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  },
+  ai: {
+    apiKey: process.env.OPENROUTER_API_KEY,
+    model: process.env.AI_MODEL || 'google/gemini-2.5-flash',
+    baseUrl: process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1',
+  },
 });
