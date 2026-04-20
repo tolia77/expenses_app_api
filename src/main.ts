@@ -5,6 +5,7 @@ import { AppException } from './common/exceptions/app.exception';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks(); // NestJS disables these by default; required for @nestjs/bullmq worker.close() on SIGTERM (SC#4)
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

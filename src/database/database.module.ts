@@ -25,6 +25,10 @@ import { User } from 'src/users/user.entity';
         database: config.get<string>('database.database'),
         entities: [Category, Expense, Merchant, Receipt, ReceiptParse, User],
         synchronize: false,
+        // Pool size headroom: worker concurrency (1) + HTTP path + future bumps.
+        // Must stay >= (BullMQ worker concurrency + 2) — QUEUE-06. Bump in lockstep
+        // if the @Processor concurrency arg is increased in ReceiptParseProcessor.
+        extra: { max: 20 },
       }),
     }),
   ],

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
+import { BullModule } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
@@ -20,6 +22,17 @@ import { WhitelistSerializerInterceptor } from './common/interceptors/whitelist-
   imports: [
     AppConfigModule,
     DatabaseModule,
+    BullModule.forRootAsync({
+      imports: [AppConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get<string>('redis.host'),
+          port: config.get<number>('redis.port'),
+          maxRetriesPerRequest: null, // REQUIRED by BullMQ workers — without this, blocking commands throw
+        },
+      }),
+    }),
     AnalyticsModule,
     CategoriesModule,
     ExpensesModule,
