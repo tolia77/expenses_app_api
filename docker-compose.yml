@@ -1,13 +1,40 @@
 services:
+  api:
+    build: .
+    ports:
+      - '3004:3004'
+    env_file: .env
+    volumes:
+      - ./src:/app/src
+      - ./test:/app/test
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      createbuckets:
+        condition: service_completed_successfully
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   minio:
     image: quay.io/minio/minio:RELEASE.2025-03-12T18-04-18Z
-    ports:
-      - '9000:9000'
-      - '9001:9001'
     command: server --console-address :9001 /data
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET}
     volumes:
       - minio-data:/data
 
@@ -19,10 +46,11 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      /usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin;
-      /usr/bin/mc mb local/receipts-bucket --ignore-existing;
+      /usr/bin/mc alias set local http://minio:9000 ${STORAGE_ACCESS_KEY} ${STORAGE_SECRET};
+      /usr/bin/mc mb local/${STORAGE_BUCKET} --ignore-existing;
       exit 0;
       "
 
 volumes:
+  db-data:
   minio-data:
