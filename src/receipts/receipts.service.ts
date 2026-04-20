@@ -195,7 +195,8 @@ export class ReceiptsService {
   private async findOneEntity(id: string, userId: string): Promise<Receipt> {
     const receipt = await this.receiptRepository.findOne({
       where: { id, user_id: userId },
-      relations: ['expenses', 'expenses.category'],
+      relations: ['expenses', 'expenses.category', 'parses'],
+      order: { parses: { created_at: 'DESC' } },
     });
     if (!receipt) {
       throw new AppException(
