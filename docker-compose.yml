@@ -10,10 +10,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      minio:
-        condition: service_started
-      createbuckets:
-        condition: service_completed_successfully
+      garage:
+        condition: service_healthy
 
   db:
     image: postgres:17-alpine
@@ -29,28 +27,25 @@ services:
       timeout: 3s
       retries: 10
 
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-03-12T18-04-18Z
-    command: server --console-address :9001 /data
+  garage:
+    image: dxflrs/garage:v2.3.0
+    hostname: garage
     environment:
-      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET}
+      GARAGE_DEFAULT_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
+      GARAGE_DEFAULT_SECRET_KEY: ${STORAGE_SECRET}
+      GARAGE_DEFAULT_BUCKET: ${STORAGE_BUCKET}
+    command: ['/garage', 'server', '--single-node', '--default-bucket']
     volumes:
-      - minio-data:/data
-
-  createbuckets:
-    image: quay.io/minio/mc:RELEASE.2025-03-12T17-29-24Z
-    depends_on:
-      - minio
-    restart: on-failure
-    entrypoint: >
-      /bin/sh -c "
-      sleep 5;
-      /usr/bin/mc alias set local http://minio:9000 ${STORAGE_ACCESS_KEY} ${STORAGE_SECRET};
-      /usr/bin/mc mb local/${STORAGE_BUCKET} --ignore-existing;
-      exit 0;
-      "
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    healthcheck:
+      test: ['CMD', '/garage', 'status']
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
 volumes:
   db-data:
-  minio-data:
+  garage-meta:
+  garage-data:
