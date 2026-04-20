@@ -13,6 +13,7 @@ import { getSignedUrl as presignUrl } from '@aws-sdk/s3-request-presigner';
 @Injectable()
 export class StorageService implements OnModuleInit {
   private client: S3Client;
+  private presignClient: S3Client;
   private bucket: string;
   private presignTtl: number;
 
@@ -22,6 +23,7 @@ export class StorageService implements OnModuleInit {
     this.bucket = this.config.get<string>('storage.bucket')!;
     this.presignTtl = this.config.get<number>('storage.presignTtl')!;
     const endpoint = this.config.get<string>('storage.endpoint');
+    const publicEndpoint = this.config.get<string>('storage.publicEndpoint');
     const region = this.config.get<string>('storage.region')!;
     const accessKeyId = this.config.get<string>('storage.accessKey')!;
     const secretAccessKey = this.config.get<string>('storage.secret')!;
@@ -32,6 +34,15 @@ export class StorageService implements OnModuleInit {
       forcePathStyle: !!endpoint,
       credentials: { accessKeyId, secretAccessKey },
     });
+
+    this.presignClient = publicEndpoint
+      ? new S3Client({
+          endpoint: publicEndpoint,
+          region,
+          forcePathStyle: true,
+          credentials: { accessKeyId, secretAccessKey },
+        })
+      : this.client;
 
     await this.ensureBucket();
   }
@@ -70,7 +81,7 @@ export class StorageService implements OnModuleInit {
 
   async getSignedUrl(key: string): Promise<string> {
     return presignUrl(
-      this.client,
+      this.presignClient,
       new GetObjectCommand({ Bucket: this.bucket, Key: key }),
       { expiresIn: this.presignTtl },
     );

@@ -13,6 +13,7 @@ export default () => ({
   },
   storage: {
     endpoint: process.env.STORAGE_ENDPOINT,
+    publicEndpoint: process.env.STORAGE_PUBLIC_ENDPOINT,
     bucket: process.env.STORAGE_BUCKET,
     accessKey: process.env.STORAGE_ACCESS_KEY,
     secret: process.env.STORAGE_SECRET,
