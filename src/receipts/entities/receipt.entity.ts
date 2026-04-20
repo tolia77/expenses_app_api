@@ -2,6 +2,7 @@ import { Exclude, Expose, Type } from 'class-transformer';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { User } from 'src/users/user.entity';
 import { Expense } from 'src/expenses/expenses.entity';
+import { ReceiptParse } from 'src/receipt-parse/receipt-parse.entity';
 import {
   Entity,
   Column,
@@ -63,4 +64,9 @@ export class Receipt {
   @Type(() => Expense)
   @OneToMany(() => Expense, (expense) => expense.receipt)
   expenses: Expense[];
+
+  @Expose()
+  @Type(() => ReceiptParse)
+  @OneToMany(() => ReceiptParse, (parse) => parse.receipt)
+  parses: ReceiptParse[];
 }
