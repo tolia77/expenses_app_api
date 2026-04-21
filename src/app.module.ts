@@ -11,6 +11,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { MerchantsModule } from './merchants/merchants.module';
 import { ReceiptParseModule } from './receipt-parse/receipt-parse.module';
+import { ReceiptParserModule } from './receipt-parser/receipt-parser.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
@@ -38,6 +39,7 @@ import { WhitelistSerializerInterceptor } from './common/interceptors/whitelist-
     ExpensesModule,
     MerchantsModule,
     ReceiptParseModule,
+    ReceiptParserModule,
     ReceiptsModule,
     StorageModule,
     UsersModule,
