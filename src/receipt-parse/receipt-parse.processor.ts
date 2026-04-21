@@ -1,6 +1,16 @@
-import { Logger } from '@nestjs/common';
+import { Logger, Inject } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+
+import { ReceiptParse } from './receipt-parse.entity';
+import { ReceiptParser } from '../receipt-parser/receipt-parser.interface';
+import { StorageService } from '../storage/storage.service';
+import { Category } from '../categories/category.entity';
+import { FALLBACK_CATEGORY_NAME } from '../categories/categories.constants';
+import { Receipt } from '../receipts/entities/receipt.entity';
+import { Expense } from '../expenses/expenses.entity';
 
 export interface ReceiptParseJobData {
   parse_id: string;
@@ -8,21 +18,247 @@ export interface ReceiptParseJobData {
   user_id: string;
 }
 
-// Concurrency starts at 1 — the LLM call in Phase 11 is I/O-bound but we bound
-// DB pool consumption here. If raised, bump src/database/database.module.ts
-// `extra.max` in lockstep (QUEUE-06: max >= concurrency + 2).
+// Concurrency starts at 1 — the LLM call is I/O-bound but we bound DB pool
+// consumption here. If raised, bump src/database/database.module.ts `extra.max`
+// in lockstep (QUEUE-06: max >= concurrency + 2).
 //
 // JobId convention: `receipt-parse-${parse.id}` (HYPHEN — BullMQ throws on a
-// 2-segment colon-separated custom id). Phase 11's idempotency guard keys on
-// this jobId shape so re-enqueues dedupe at the queue level.
+// 2-segment colon-separated custom id). Idempotency key at the queue level.
 @Processor('receipt-parse', { concurrency: 1 })
 export class ReceiptParseProcessor extends WorkerHost {
   private readonly logger = new Logger(ReceiptParseProcessor.name);
 
+  constructor(
+    @InjectRepository(ReceiptParse)
+    private readonly parseRepo: Repository<ReceiptParse>,
+    @InjectRepository(Category)
+    private readonly categoryRepo: Repository<Category>,
+    @InjectRepository(Receipt)
+    private readonly receiptRepo: Repository<Receipt>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    @Inject(ReceiptParser)
+    private readonly receiptParser: ReceiptParser,
+    private readonly storageService: StorageService,
+  ) {
+    super();
+  }
+
   async process(job: Job<ReceiptParseJobData>): Promise<void> {
-    // Phase 9: no-op — logs payload and returns. Phase 11 replaces the body.
-    this.logger.log(
-      `no-op receipt-parse job received id=${job.id} attempt=${job.attemptsMade + 1}/${job.opts.attempts ?? 1} data=${JSON.stringify(job.data)}`,
+    const { parse_id, receipt_id, user_id } = job.data;
+
+    // --- 1. Worker-first-action idempotency guard (FLOW-02, Pitfall #7) ---
+    // Read the ReceiptParse row. If status != 'pending' (or row missing),
+    // return success without touching S3, parser, merchant, or expenses.
+    // This handles: BullMQ redelivery after a successful prior run, manual
+    // re-enqueue after terminal failure, stale messages.
+    const parse = await this.parseRepo.findOneBy({ id: parse_id });
+    if (!parse || parse.status !== 'pending') {
+      this.logger.log(
+        `idempotency skip parse_id=${parse_id} status=${parse?.status ?? 'not_found'}`,
+      );
+      return;
+    }
+
+    // --- 2. Mark started_at (outside tx) ---
+    // Low-cost diagnostic for stall detection — doesn't block the tx.
+    await this.parseRepo.update(parse_id, { started_at: new Date() });
+
+    // --- 3. Outside-tx prep: load Receipt (for photo_key), fetch photo, load categories ---
+    // LLM call + S3 download MUST NOT hold a pool connection (Pitfall #3).
+    const receipt = await this.receiptRepo.findOneBy({ id: receipt_id });
+    if (!receipt) {
+      // Receipt was deleted between enqueue and processing — extremely rare
+      // (FK cascade would have removed the ReceiptParse row too). Defensive.
+      this.logger.log(
+        `idempotency skip parse_id=${parse_id} status=receipt_missing`,
+      );
+      return;
+    }
+    if (!receipt.photo_key) {
+      // Photo was removed between enqueue and processing. Rethrow to retry —
+      // plan 11-03 converts this into a terminal 'image_unreadable' once an
+      // explicit classification exists. For now, treat as transient.
+      throw new Error('receipt has no photo_key');
+    }
+
+    const startedAt = Date.now();
+
+    // Fetch photo outside any tx.
+    const photoBuffer = await this.storageService.download(receipt.photo_key);
+
+    // Load global categories (Phase 10.1 — no user scoping).
+    // ~12 rows; no caching per Claude's Discretion #2 in RESEARCH.md.
+    const categories = await this.categoryRepo.find();
+
+    // --- 4. Call parser (outside tx) ---
+    // Plan 11-03 catches this and does err.name-based classification.
+    // In this plan, let any parser error propagate — BullMQ will retry per
+    // defaultJobOptions (attempts=3, exponential 5s).
+    const parseResult = await this.receiptParser.parse(photoBuffer, categories);
+
+    // --- 5. Check is_receipt (EXTRACT-04) ---
+    // This plan rethrows so BullMQ retries. Plan 11-03 replaces this with
+    // UnrecoverableError + terminal write on attempt 1.
+    if (!parseResult.data.is_receipt) {
+      throw new Error('not_a_receipt');
+    }
+
+    // --- 6. Check zero line items (EXTRACT-05) ---
+    // This plan rethrows so BullMQ retries. Plan 11-03 replaces with
+    // "final-attempt terminal write, retry otherwise".
+    const lineItems = parseResult.data.line_items ?? [];
+    if (lineItems.length === 0) {
+      throw new Error('zero_line_items');
+    }
+
+    // --- 7. Resolve fallback category id (EXTRACT-03) ---
+    // FALLBACK_CATEGORY_NAME = 'Other' (imported — no hardcoding).
+    const fallbackCategory = categories.find(
+      (c) => c.name === FALLBACK_CATEGORY_NAME,
     );
+    if (!fallbackCategory) {
+      // Seed drift: 'Other' row is missing from the DB. Plan 10.1 migration
+      // seeds it; if this throws, the migration didn't land or was reverted.
+      throw new Error(
+        `fallback category '${FALLBACK_CATEGORY_NAME}' not found in DB`,
+      );
+    }
+
+    // --- 8. Tx: merchant upsert → receipt update → expense reset → parse terminal update ---
+    // durationMs is captured ONCE inside the tx (last step before terminal UPDATE)
+    // and reused in the success log after the tx resolves. Info 4 — avoids the
+    // two-read skew that would otherwise exist (tx-commit overhead between reads).
+    let durationMs = 0;
+    await this.dataSource.transaction(async (em) => {
+      // 8a. Merchant upsert (race-safe, Pitfall #4) — raw SQL because TypeORM
+      //     save() can't express ON CONFLICT with a functional index.
+      const merchantId = await this.upsertMerchant(
+        em,
+        user_id,
+        parseResult.data.merchant,
+      );
+
+      // 8b. Update receipt fields from the parse (merchant_id if resolved;
+      //     purchased_at + payment_method always, allowing null).
+      if (merchantId) {
+        await em.query(
+          `UPDATE receipt
+             SET merchant_id = $1,
+                 purchased_at = $2,
+                 payment_method = $3
+           WHERE id = $4`,
+          [
+            merchantId,
+            parseResult.data.purchased_at
+              ? new Date(parseResult.data.purchased_at)
+              : null,
+            parseResult.data.payment_method ?? null,
+            receipt_id,
+          ],
+        );
+      } else {
+        // Edge: is_receipt=true but merchant is null — leave merchant_id untouched.
+        await em.query(
+          `UPDATE receipt
+             SET purchased_at = $1,
+                 payment_method = $2
+           WHERE id = $3`,
+          [
+            parseResult.data.purchased_at
+              ? new Date(parseResult.data.purchased_at)
+              : null,
+            parseResult.data.payment_method ?? null,
+            receipt_id,
+          ],
+        );
+      }
+
+      // 8c. Delete existing expenses for this receipt (FLOW-05, Pitfall #2).
+      //     Unconditional — every attempt resets expenses.
+      await em.query(`DELETE FROM expense WHERE receipt_id = $1`, [receipt_id]);
+
+      // 8d. Insert new expenses. category_id falls back to the 'Other' id when
+      //     the parser didn't assign a category (EXTRACT-03).
+      const expenseRepo = em.getRepository(Expense);
+      for (const item of lineItems) {
+        await expenseRepo.save(
+          expenseRepo.create({
+            receipt_id,
+            category_id: item.category_id ?? fallbackCategory.id,
+            name: item.name,
+            // price is a decimal string from the parser (interface); convert to number at the ORM boundary
+            price: parseFloat(item.price) as any,
+            amount: (item.amount ?? null) as any,
+            unit_type: (item.unit_type ?? null) as any,
+          } as any),
+        );
+      }
+
+      // 8e. Capture durationMs ONCE (last step before the terminal UPDATE) and
+      //     reuse it in the success log below (Info 4 — single-capture).
+      durationMs = Date.now() - startedAt;
+
+      // 8f. Terminal ReceiptParse update — status=parsed + all success fields
+      //     (OPS-03: all three token columns populated; FLOW-07: attempts =
+      //     attemptsMade + 1).
+      await em.getRepository(ReceiptParse).update(parse_id, {
+        status: 'parsed',
+        model: parseResult.model,
+        duration_ms: durationMs,
+        attempts: job.attemptsMade + 1,
+        prompt_tokens: parseResult.usage.prompt_tokens,
+        completion_tokens: parseResult.usage.completion_tokens,
+        total_tokens: parseResult.usage.total_tokens,
+        raw_response: parseResult.raw_response as object,
+        finished_at: new Date(),
+        // error_code + error_message intentionally left null (success path).
+      });
+    });
+
+    // --- 9. Success log (OPS-01, Pitfall #6) ---
+    // Fields: parse_id, receipt_id, model, attempt, duration_ms, total_tokens.
+    // durationMs is the SAME value written to receipt_parse.duration_ms inside
+    // the tx (single-capture — Info 4). NO payload, NO prompt, NO response body.
+    // Leading `parse_ok` tag for grep.
+    this.logger.log(
+      `parse_ok parse_id=${parse_id} receipt_id=${receipt_id} model=${parseResult.model} attempt=${job.attemptsMade + 1} duration_ms=${durationMs} total_tokens=${parseResult.usage.total_tokens}`,
+    );
+  }
+
+  /**
+   * Race-safe merchant upsert for (user_id, LOWER(name)).
+   *
+   * Single SQL round-trip in the happy path (no existing merchant): INSERT with
+   * ON CONFLICT DO NOTHING RETURNING id. On race (concurrent INSERT won),
+   * RETURNING is empty, so we SELECT the winner's id by the same functional key.
+   *
+   * The functional unique index `uq_merchant_user_id_lower_name` was created in
+   * Phase 9's migration; the ON CONFLICT target must match the index expression
+   * exactly — `(user_id, (LOWER(name)))`.
+   */
+  private async upsertMerchant(
+    em: EntityManager,
+    userId: string,
+    merchantData: { name: string; address?: string } | null,
+  ): Promise<string | null> {
+    if (!merchantData?.name) return null;
+
+    const inserted: Array<{ id: string }> = await em.query(
+      `INSERT INTO merchant (name, user_id, address)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, (LOWER(name))) DO NOTHING
+       RETURNING id`,
+      [merchantData.name, userId, merchantData.address ?? null],
+    );
+
+    if (inserted.length > 0) return inserted[0].id;
+
+    // Race: a concurrent INSERT already committed; fetch that row's id.
+    const existing: Array<{ id: string }> = await em.query(
+      `SELECT id FROM merchant WHERE user_id = $1 AND LOWER(name) = LOWER($2)`,
+      [userId, merchantData.name],
+    );
+    return existing[0]?.id ?? null;
   }
 }
