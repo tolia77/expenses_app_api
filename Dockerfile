@@ -1,12 +1,28 @@
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-# Build toolchain for native modules (bcrypt, pg) on alpine
-RUN apk add --no-cache python3 make g++
+# System deps:
+# - python3 / make / g++ for native node modules (bcrypt, pg) that invoke node-gyp
+# - libvips-dev: required for sharp when built from source (Debian ships libvips 8.14+)
+# - libheif-dev: HEIC/HEIF decode support — required by CONTEXT.md format allowlist
+# - libde265-dev: HEVC codec library — libheif dynamically loads this; HEIC buffers fail without it
+# - ca-certificates: for npm over HTTPS (bookworm-slim does not include by default)
+# Cleanup apt lists to keep image under ~200 MB.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      python3 make g++ \
+      libvips-dev libvips-tools libheif-dev libde265-dev \
+      ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-RUN npm ci
+
+# Force sharp to rebuild against the system libvips (with libheif linkage).
+# sharp's prebuilt binaries do NOT include HEIC — this flag is load-bearing for HEIC support.
+# The SHARP_IGNORE_GLOBAL_LIBVIPS=0 env ensures sharp does NOT fall back to its bundled libvips.
+ENV SHARP_IGNORE_GLOBAL_LIBVIPS=0
+RUN npm ci --build-from-source=sharp || npm ci
 
 COPY . .
 
