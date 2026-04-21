@@ -63,9 +63,7 @@ export class GlobalizeCategories1776801272732 implements MigrationInterface {
     );
 
     // Step 7: drop the user_id column.
-    await queryRunner.query(
-      `ALTER TABLE "category" DROP COLUMN "user_id"`,
-    );
+    await queryRunner.query(`ALTER TABLE "category" DROP COLUMN "user_id"`);
 
     // Step 8: add UNIQUE(name). Enables safe WHERE name='Other' lookup + idempotent reseeding.
     await queryRunner.query(
@@ -88,9 +86,7 @@ export class GlobalizeCategories1776801272732 implements MigrationInterface {
     );
 
     // Step 2: add user_id back as nullable uuid (cannot add NOT NULL without data — Pitfall 6).
-    await queryRunner.query(
-      `ALTER TABLE "category" ADD COLUMN "user_id" uuid`,
-    );
+    await queryRunner.query(`ALTER TABLE "category" ADD COLUMN "user_id" uuid`);
 
     // Step 3: restore the FK (matches original from 1776278925895-AddUserIdToCategory.ts + 1776584293364 rename).
     await queryRunner.query(
@@ -106,11 +102,7 @@ export class GlobalizeCategories1776801272732 implements MigrationInterface {
     `);
 
     // Step 5: drop the created_at / updated_at columns added in up() (original table had neither).
-    await queryRunner.query(
-      `ALTER TABLE "category" DROP COLUMN "updated_at"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "category" DROP COLUMN "created_at"`,
-    );
+    await queryRunner.query(`ALTER TABLE "category" DROP COLUMN "updated_at"`);
+    await queryRunner.query(`ALTER TABLE "category" DROP COLUMN "created_at"`);
   }
 }
