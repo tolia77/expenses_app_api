@@ -1,12 +1,11 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { User } from 'src/users/user.entity';
 
 @Entity()
 export class Category {
@@ -15,15 +14,14 @@ export class Category {
   id: string;
 
   @Expose()
-  @Column()
+  @Column({ unique: true })
   name: string;
 
   @Expose()
-  @Column({ name: 'user_id' })
-  user_id: string;
+  @CreateDateColumn({ name: 'created_at' })
+  created_at: Date;
 
-  @Exclude()
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+  @Expose()
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at: Date;
 }

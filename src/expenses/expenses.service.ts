@@ -53,9 +53,9 @@ export class ExpensesService {
     // Verify receipt ownership (throws 404 if not found/not owned)
     await this.receiptsService.findOne(receiptId, userId);
 
-    // Verify category ownership (throws 404 if not found/not owned)
+    // Verify category exists (global categories have no per-user ownership)
     const { category_id, ...rest } = createExpenseDto;
-    await this.categoriesService.findOne(category_id, userId);
+    await this.categoriesService.findById(category_id);
 
     const expense = this.expenseRepository.create({
       ...rest,
@@ -89,7 +89,8 @@ export class ExpensesService {
     const expense = await this.findOne(id, userId);
     const { category_id, ...rest } = updateExpenseDto;
     if (category_id !== undefined) {
-      await this.categoriesService.findOne(category_id, userId);
+      // Verify category exists (global categories have no per-user ownership)
+      await this.categoriesService.findById(category_id);
       expense.category = { id: category_id } as any;
       expense.category_id = category_id;
     }
