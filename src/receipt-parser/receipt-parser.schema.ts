@@ -24,31 +24,45 @@ import { z } from 'zod';
 export const receiptSchema = z.object({
   is_receipt: z
     .boolean()
-    .describe('True if the image is a receipt; false otherwise (all other fields nullable when false)'),
+    .describe(
+      'True if the image is a receipt; false otherwise (all other fields nullable when false)',
+    ),
   merchant: z
     .object({
       name: z.string().describe('Merchant/store name as printed'),
-      address: z.string().optional().describe('Street address if printed; omit field if absent'),
+      address: z
+        .string()
+        .optional()
+        .describe('Street address if printed; omit field if absent'),
     })
     .nullable()
     .describe('Merchant details; null when is_receipt is false'),
   payment_method: z
     .string()
     .nullable()
-    .describe('Payment method as printed on the receipt (e.g. "VISA ****1234", "Apple Pay", "Cash"); null if not visible'),
+    .describe(
+      'Payment method as printed on the receipt (e.g. "VISA ****1234", "Apple Pay", "Cash"); null if not visible',
+    ),
   purchased_at: z
     .string()
     .datetime({ offset: true })
     .nullable()
-    .describe('ISO 8601 datetime with "Z" UTC suffix preferred (e.g. 2024-01-15T14:30:00Z); null if not parseable'),
+    .describe(
+      'ISO 8601 datetime with "Z" UTC suffix preferred (e.g. 2024-01-15T14:30:00Z); null if not parseable',
+    ),
   line_items: z
     .array(
       z.object({
         name: z.string().describe('Line item name as printed'),
         price: z
           .string()
-          .regex(/^\d+(\.\d{1,2})?$/, 'Decimal string with up to 2 fractional digits')
-          .describe('Line item unit price as a decimal string (e.g. "12.99"); NOT a number'),
+          .regex(
+            /^\d+(\.\d{1,2})?$/,
+            'Decimal string with up to 2 fractional digits',
+          )
+          .describe(
+            'Line item unit price as a decimal string (e.g. "12.99"); NOT a number',
+          ),
         amount: z
           .number()
           .nullable()
@@ -56,15 +70,21 @@ export const receiptSchema = z.object({
         unit_type: z
           .string()
           .nullable()
-          .describe('Unit of measure (kg, lb, oz, etc.); null when no unit printed'),
+          .describe(
+            'Unit of measure (kg, lb, oz, etc.); null when no unit printed',
+          ),
         category_id: z
           .string()
           .nullable()
-          .describe('Category NAME chosen from the list in the system prompt, or null if no category fits'),
+          .describe(
+            'Category NAME chosen from the list in the system prompt, or null if no category fits',
+          ),
       }),
     )
     .nullable()
-    .describe('Array of purchased line items; excludes tax, tip, discount lines. Null when is_receipt is false.'),
+    .describe(
+      'Array of purchased line items; excludes tax, tip, discount lines. Null when is_receipt is false.',
+    ),
 });
 
 export type ReceiptSchema = z.infer<typeof receiptSchema>;

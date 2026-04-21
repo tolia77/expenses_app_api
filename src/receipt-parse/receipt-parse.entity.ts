@@ -20,7 +20,9 @@ export class ReceiptParse {
   @Column({ name: 'receipt_id' })
   receipt_id: string;
 
-  @ManyToOne(() => Receipt, (receipt) => receipt.parses, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Receipt, (receipt) => receipt.parses, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'receipt_id' })
   receipt: Receipt;
 

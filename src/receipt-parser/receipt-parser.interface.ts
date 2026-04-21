@@ -17,28 +17,28 @@ export interface ParsedReceipt {
   is_receipt: boolean;
   merchant: {
     name: string;
-    address?: string;     // optional (frequently missing on receipts), NOT nullable
+    address?: string; // optional (frequently missing on receipts), NOT nullable
   } | null;
   payment_method: string | null;
-  purchased_at: string | null;      // ISO 8601 datetime, nullable
+  purchased_at: string | null; // ISO 8601 datetime, nullable
   line_items: Array<{
     name: string;
-    price: string;                   // decimal string — NOT number
-    amount: number | null;           // defaults to 1 when the receipt doesn't print a qty
-    unit_type: string | null;        // null when no unit printed (kg, lb, oz, etc.)
-    category_id: string | null;      // UUID; null when no category fits (Phase 11 decides fallback)
+    price: string; // decimal string — NOT number
+    amount: number | null; // defaults to 1 when the receipt doesn't print a qty
+    unit_type: string | null; // null when no unit printed (kg, lb, oz, etc.)
+    category_id: string | null; // UUID; null when no category fits (Phase 11 decides fallback)
   }> | null;
 }
 
 export interface ParseResult {
   data: ParsedReceipt;
-  model: string;                     // completion.model — AI-09 (the actual model used)
+  model: string; // completion.model — AI-09 (the actual model used)
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
   };
-  raw_response: unknown;              // full OpenRouter completion; Phase 11 persists to ReceiptParse.raw_response
+  raw_response: unknown; // full OpenRouter completion; Phase 11 persists to ReceiptParse.raw_response
 }
 
 /**

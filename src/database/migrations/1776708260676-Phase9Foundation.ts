@@ -56,7 +56,9 @@ export class Phase9Foundation1776708260676 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "uq_merchant_user_id_lower_name"`);
     await queryRunner.query(`DROP INDEX "idx_receipt_parse_status_created_at"`);
-    await queryRunner.query(`DROP INDEX "idx_receipt_parse_receipt_id_created_at"`);
+    await queryRunner.query(
+      `DROP INDEX "idx_receipt_parse_receipt_id_created_at"`,
+    );
     await queryRunner.query(
       `ALTER TABLE "receipt_parse" DROP CONSTRAINT "fk_receipt_parse_user_id"`,
     );
