@@ -70,6 +70,22 @@ export class StorageService implements OnModuleInit {
     );
   }
 
+  async download(key: string): Promise<Buffer> {
+    const response = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    if (!response.Body) {
+      throw new Error(`S3 object missing body for key: ${key}`);
+    }
+    // AWS SDK v3 wraps Body with sdkStreamMixin in Node.js, which adds
+    // transformToByteArray(). TypeScript's union for `Body` doesn't expose
+    // the mixin method without a cast — this `as any` cast is the idiomatic
+    // pattern in the AWS SDK v3 Node.js docs.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bytes = await (response.Body as any).transformToByteArray();
+    return Buffer.from(bytes);
+  }
+
   async delete(key: string): Promise<void> {
     await this.client.send(
       new DeleteObjectCommand({

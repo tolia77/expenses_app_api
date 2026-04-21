@@ -1,8 +1,11 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Receipt } from './entities/receipt.entity';
+import { ReceiptParse } from '../receipt-parse/receipt-parse.entity';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { UpdateReceiptDto } from './dto/update-receipt.dto';
 import { FilterReceiptsDto } from './dto/filter-receipts.dto';
@@ -16,8 +19,12 @@ export class ReceiptsService {
   constructor(
     @InjectRepository(Receipt)
     private receiptRepository: Repository<Receipt>,
+    @InjectRepository(ReceiptParse)
+    private parseRepository: Repository<ReceiptParse>,
     private merchantsService: MerchantsService,
     private storageService: StorageService,
+    @InjectQueue('receipt-parse')
+    private parseQueue: Queue,
   ) {}
 
   async create(userId: string, createReceiptDto: CreateReceiptDto) {
@@ -149,6 +156,25 @@ export class ReceiptsService {
         // orphaned old object — acceptable per Phase 7 scope
       }
     }
+
+    // 6) Create a pending ReceiptParse row and enqueue a BullMQ job.
+    //    FLOW-01: each user-level upload is a distinct parse attempt (its own row).
+    //    jobId uses a HYPHEN — `receipt-parse-${parse.id}` — the colon form
+    //    throws synchronously in BullMQ (verified live in Phase 9).
+    //    defaultJobOptions (attempts=3, exponential 5s) live on ReceiptParseModule;
+    //    do NOT duplicate them here.
+    const parse = await this.parseRepository.save(
+      this.parseRepository.create({
+        receipt_id: id,
+        user_id: userId,
+        status: 'pending',
+      }),
+    );
+    await this.parseQueue.add(
+      'parse',
+      { parse_id: parse.id, receipt_id: id, user_id: userId },
+      { jobId: `receipt-parse-${parse.id}` },
+    );
 
     const photo_url = await this.storageService.getSignedUrl(newKey);
     return { photo_url };
