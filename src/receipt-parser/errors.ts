@@ -41,9 +41,9 @@ export class ImageProcessingError extends Error {
 }
 
 export interface OpenRouterErrorDetails {
-  status: number;           // HTTP status from OpenAI.APIError.status; 0 for non-HTTP failures
-  errorClass: string;        // SDK error class name (e.g. 'RateLimitError', 'AuthenticationError')
-  excerpt?: string;          // sanitized short body excerpt (≤200 chars, stripped of base64-looking blobs)
+  status: number; // HTTP status from OpenAI.APIError.status; 0 for non-HTTP failures
+  errorClass: string; // SDK error class name (e.g. 'RateLimitError', 'AuthenticationError')
+  excerpt?: string; // sanitized short body excerpt (≤200 chars, stripped of base64-looking blobs)
 }
 
 export class OpenRouterError extends Error {

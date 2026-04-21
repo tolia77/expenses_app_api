@@ -55,9 +55,12 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
     }
     const baseURL = this.config.get<string>('ai.baseUrl');
     if (!baseURL) {
-      throw new Error('ai.baseUrl is not configured (expected AI_BASE_URL env).');
+      throw new Error(
+        'ai.baseUrl is not configured (expected AI_BASE_URL env).',
+      );
     }
-    this.model = this.config.get<string>('ai.model') ?? 'google/gemini-2.5-flash';
+    this.model =
+      this.config.get<string>('ai.model') ?? 'google/gemini-2.5-flash';
     // Pinned dated alias (for reference — keep if model drift ever bites per Pitfall 11):
     //   google/gemini-2.5-flash-preview-09-2025
 
@@ -89,9 +92,11 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
       // openai SDK. The SDK forwards unknown top-level request-body fields verbatim
       // per openai-node README. TypeScript's type system can't express "open object
       // with unknown extras", so a typed cast is the idiomatic solution.
-      completion = await (this.client.chat.completions.create as (
-        body: unknown,
-      ) => Promise<OpenAI.Chat.Completions.ChatCompletion>)({
+      completion = await (
+        this.client.chat.completions.create as (
+          body: unknown,
+        ) => Promise<OpenAI.Chat.Completions.ChatCompletion>
+      )({
         model: this.model,
         stream: false,
         messages: [
@@ -143,11 +148,14 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
       }
       // Unknown (network, SDK bug, etc.) — wrap with status=0.
       const message = err instanceof Error ? err.message : String(err);
-      throw new OpenRouterError(`OpenRouter call failed: ${message.slice(0, 80)}`, {
-        status: 0,
-        errorClass: err instanceof Error ? err.constructor.name : 'Unknown',
-        excerpt: sanitizeExcerpt(message),
-      });
+      throw new OpenRouterError(
+        `OpenRouter call failed: ${message.slice(0, 80)}`,
+        {
+          status: 0,
+          errorClass: err instanceof Error ? err.constructor.name : 'Unknown',
+          excerpt: sanitizeExcerpt(message),
+        },
+      );
     }
 
     // --- Step 3: extract + JSON.parse the structured output ---
@@ -168,14 +176,17 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
     // --- Step 4: Zod re-validate (AI-05) ---
     const result = receiptSchema.safeParse(parsed);
     if (!result.success) {
-      throw new SchemaValidationError('Schema validation failed on LLM response', {
-        // Zod v4: i.path is PropertyKey[] (includes symbol); cast to match SchemaValidationDetails.
-        issues: result.error.issues.slice(0, 5).map((i) => ({
-          path: i.path as (string | number)[],
-          message: i.message,
-          code: i.code,
-        })),
-      });
+      throw new SchemaValidationError(
+        'Schema validation failed on LLM response',
+        {
+          // Zod v4: i.path is PropertyKey[] (includes symbol); cast to match SchemaValidationDetails.
+          issues: result.error.issues.slice(0, 5).map((i) => ({
+            path: i.path as (string | number)[],
+            message: i.message,
+            code: i.code,
+          })),
+        },
+      );
     }
 
     // --- Step 5: map category NAME → ID (transparent to callers) ---
