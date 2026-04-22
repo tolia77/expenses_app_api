@@ -2,6 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 import { TopExpensesQueryDto } from './dto/top-expenses-query.dto';
+import { TimeseriesQueryDto } from './dto/timeseries-query.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('analytics')
@@ -31,5 +32,10 @@ export class AnalyticsController {
   @Get('top-expenses')
   topExpenses(@CurrentUser() user, @Query() dto: TopExpensesQueryDto) {
     return this.analyticsService.topExpenses(user.sub, dto);
+  }
+
+  @Get('timeseries')
+  timeseries(@CurrentUser() user, @Query() dto: TimeseriesQueryDto) {
+    return this.analyticsService.timeseries(user.sub, dto);
   }
 }
