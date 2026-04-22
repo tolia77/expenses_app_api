@@ -91,9 +91,8 @@ export function resolveGranularity(
       );
     }
     const spanDays =
-      Math.floor(
-        (bounds.end.getTime() - bounds.start.getTime()) / MS_PER_DAY,
-      ) + 1;
+      Math.floor((bounds.end.getTime() - bounds.start.getTime()) / MS_PER_DAY) +
+      1;
 
     if (granularity) {
       // Reject anything that would produce zero or one buckets.
