@@ -69,7 +69,9 @@ describe('resolveGranularity', () => {
   it('period=custom picks hour for <= 2 day spans', () => {
     const start = new Date('2026-04-10T00:00:00.000Z');
     const end = new Date('2026-04-11T23:59:59.999Z');
-    expect(resolveGranularity('custom', undefined, { start, end })).toBe('hour');
+    expect(resolveGranularity('custom', undefined, { start, end })).toBe(
+      'hour',
+    );
   });
 
   it('period=custom picks day for spans under 94 days', () => {
@@ -81,7 +83,9 @@ describe('resolveGranularity', () => {
   it('period=custom picks month for long spans', () => {
     const start = new Date('2025-01-01T00:00:00.000Z');
     const end = new Date('2026-04-01T23:59:59.999Z');
-    expect(resolveGranularity('custom', undefined, { start, end })).toBe('month');
+    expect(resolveGranularity('custom', undefined, { start, end })).toBe(
+      'month',
+    );
   });
 
   it('honors explicit override when strictly finer than period', () => {
@@ -91,18 +95,56 @@ describe('resolveGranularity', () => {
 
   it('rejects override equal to period granularity', () => {
     expect(() => resolveGranularity('day', 'day')).toThrow(BadRequestException);
-    expect(() => resolveGranularity('week', 'week')).toThrow(BadRequestException);
+    expect(() => resolveGranularity('week', 'week')).toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects override coarser than period', () => {
-    expect(() => resolveGranularity('day', 'month')).toThrow(BadRequestException);
-    expect(() => resolveGranularity('week', 'month')).toThrow(BadRequestException);
+    expect(() => resolveGranularity('day', 'month')).toThrow(
+      BadRequestException,
+    );
+    expect(() => resolveGranularity('week', 'month')).toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects custom override that does not fit the span', () => {
     const start = new Date('2026-04-10T00:00:00.000Z');
     const end = new Date('2026-04-11T23:59:59.999Z'); // 2 days
     expect(() => resolveGranularity('custom', 'month', { start, end })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('allows day override at exactly 2-day span boundary', () => {
+    const start = new Date('2026-04-10T00:00:00.000Z');
+    const end = new Date('2026-04-11T23:59:59.999Z'); // inclusive 2 calendar days
+    expect(resolveGranularity('custom', 'day', { start, end })).toBe('day');
+  });
+
+  it('allows week override at exactly 14-day span boundary', () => {
+    const start = new Date('2026-04-10T00:00:00.000Z');
+    const end = new Date('2026-04-23T23:59:59.999Z'); // inclusive 14 calendar days
+    expect(resolveGranularity('custom', 'week', { start, end })).toBe('week');
+  });
+
+  it('allows month override at exactly 60-day span boundary', () => {
+    const start = new Date('2026-04-10T00:00:00.000Z');
+    const end = new Date('2026-06-08T23:59:59.999Z'); // inclusive 60 calendar days
+    expect(resolveGranularity('custom', 'month', { start, end })).toBe('month');
+  });
+
+  it('rejects day override at 1-day span', () => {
+    const start = new Date('2026-04-10T00:00:00.000Z');
+    const end = new Date('2026-04-10T23:59:59.999Z'); // 1 calendar day
+    expect(() => resolveGranularity('custom', 'day', { start, end })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('throws BadRequestException when custom bounds are missing', () => {
+    expect(() => resolveGranularity('custom', undefined)).toThrow(
       BadRequestException,
     );
   });
