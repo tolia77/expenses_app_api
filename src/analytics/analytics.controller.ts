@@ -12,6 +12,11 @@ export class AnalyticsController {
     return this.analyticsService.byCategory(user.sub, dto);
   }
 
+  @Get('by-merchant')
+  byMerchant(@CurrentUser() user, @Query() dto: AnalyticsQueryDto) {
+    return this.analyticsService.byMerchant(user.sub, dto);
+  }
+
   @Get('total')
   total(@CurrentUser() user, @Query() dto: AnalyticsQueryDto) {
     return this.analyticsService.total(user.sub, dto);
