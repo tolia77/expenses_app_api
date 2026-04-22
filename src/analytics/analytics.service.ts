@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Expense } from '../expenses/expenses.entity';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
+import { TopExpensesQueryDto } from './dto/top-expenses-query.dto';
 import { getPeriodBounds } from './util/period-bounds';
 
 @Injectable()
@@ -139,6 +140,40 @@ export class AnalyticsService {
       .getRawOne();
 
     return { total: parseFloat(row?.total ?? '0') || 0 };
+  }
+
+  async topExpenses(userId: string, dto: TopExpensesQueryDto) {
+    const { start, end } = getPeriodBounds(dto);
+    const limit = dto.limit ?? 10;
+    const rows = await this.expenseRepository
+      .createQueryBuilder('expense')
+      .innerJoin('expense.receipt', 'receipt')
+      .innerJoin('expense.category', 'category')
+      .leftJoin('receipt.merchant', 'merchant')
+      .select('expense.id', 'expense_id')
+      .addSelect('expense.name', 'name')
+      .addSelect('expense.price * COALESCE(expense.amount, 1)', 'amount')
+      .addSelect('category.name', 'category_name')
+      .addSelect('merchant.name', 'merchant_name')
+      .addSelect('receipt.purchased_at', 'purchased_at')
+      .addSelect('receipt.id', 'receipt_id')
+      .where('receipt.user_id = :userId', { userId })
+      .andWhere('receipt.purchased_at BETWEEN :start AND :end', { start, end })
+      .orderBy('amount', 'DESC')
+      .limit(limit)
+      .getRawMany();
+
+    return rows.map((r) => ({
+      expense_id: r.expense_id,
+      name: r.name,
+      amount: round2(parseFloat(r.amount ?? '0') || 0),
+      category_name: r.category_name,
+      merchant_name: r.merchant_name ?? null,
+      purchased_at: r.purchased_at
+        ? new Date(r.purchased_at).toISOString()
+        : null,
+      receipt_id: r.receipt_id,
+    }));
   }
 }
 
