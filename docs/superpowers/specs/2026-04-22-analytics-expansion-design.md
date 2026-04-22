@@ -166,8 +166,8 @@ src/analytics/
     period-bounds.spec.ts
     timeseries-buckets.ts            # generateBuckets(start, end, granularity) + fillBuckets(rows, buckets)
     timeseries-buckets.spec.ts
-  analytics.service.spec.ts          # new — covers all service methods
-  analytics.controller.spec.ts       # new — thin, asserts delegation
+  analytics.service.spec.ts          # new — scaffold (`toBeDefined`) matching existing repo convention
+  analytics.controller.spec.ts       # new — thin, asserts delegation with a mocked service
 ```
 
 ### Files to modify
@@ -176,8 +176,9 @@ src/analytics/
 src/analytics/
   analytics.controller.ts            # add 5 @Get handlers; all thin, delegate to service
   analytics.service.ts               # add 5 methods + expand byCategory(); use util helpers
-  analytics.module.ts                # add Receipt to TypeOrmModule.forFeature
 ```
+
+`analytics.module.ts` is **unchanged**. All new queries start from `expense INNER JOIN receipt`, so `Repository<Expense>` alone suffices — no additional `TypeOrmModule.forFeature` change needed.
 
 `dto/analytics-query.dto.ts` is unchanged — reused as base for the new DTOs via `extends`.
 
@@ -186,7 +187,7 @@ src/analytics/
 | Unit | Purpose | Depends on |
 |---|---|---|
 | `AnalyticsController` | HTTP surface, DTO validation, auth | `AnalyticsService` |
-| `AnalyticsService` | Compose TypeORM queries, return API shape | `Repository<Expense>`, `Repository<Receipt>`, helpers |
+| `AnalyticsService` | Compose TypeORM queries, return API shape | `Repository<Expense>`, helpers |
 | `period-bounds.ts` | Pure date math: period → `{start, end}`, resolve granularity | nothing |
 | `timeseries-buckets.ts` | Pure bucketing: generate labels + zero-fill | nothing (hand-rolled UTC math) |
 
@@ -216,14 +217,6 @@ export class TopExpensesQueryDto extends AnalyticsQueryDto {
   @Max(100)
   limit?: number;  // service defaults to 10 when undefined
 }
-```
-
-### Module change
-
-`AnalyticsService` currently only injects `Repository<Expense>`. `by-payment-method` and `summary` need receipt-level aggregates, so inject `Repository<Receipt>` too. One-line change to `AnalyticsModule`:
-
-```ts
-TypeOrmModule.forFeature([Expense, Receipt])
 ```
 
 ## Query strategy
@@ -385,37 +378,31 @@ Four queries in parallel. Simpler than a custom multi-aggregate, and the groupin
 
 ## Testing strategy
 
-### `period-bounds.spec.ts` (pure unit)
+The repo has no test-DB fixture infrastructure: existing `*.service.spec.ts` files are trivial `toBeDefined` scaffolds with mocked repository tokens, and the only e2e test hits `/` on the live app. Building seeded-DB integration specs is out of scope for this feature. Strategy below concentrates coverage on the pure logic that's actually tricky, and matches existing culture for everything else.
+
+### `period-bounds.spec.ts` (pure unit, load-bearing)
 
 - Each period produces expected `{start, end}` (fix `Date.now()` via fake timers).
 - Custom period parses `from`/`to` correctly.
 - `resolveGranularity`: auto-pick for each period; respects explicit override; rejects granularity coarser than period.
 
-### `timeseries-buckets.spec.ts` (pure unit)
+### `timeseries-buckets.spec.ts` (pure unit, load-bearing)
 
 - `generateBuckets`: correct count and labels for each granularity over known spans.
 - `fillBuckets`: preserves totals for matched buckets, emits `0` for gaps, output ordered ASC.
 - Timezone: inputs are UTC, outputs are UTC ISO strings. One test asserting no local-time drift.
 
-### `analytics.service.spec.ts` (integration, real test DB)
+### `analytics.service.spec.ts` (scaffold only)
 
-Seed fixture (one `beforeAll`): 1 user, 3 categories, 2 merchants, 4 receipts across different dates and payment methods, ~10 expenses. One receipt with `merchant_id = null`. One receipt with `payment_method = null`.
-
-- `byCategory`: totals, `receipt_count` (distinct), `expense_count`, `avg_expense`, `share_pct` sums to ~100 (within rounding), `last_purchased_at`.
-- `byMerchant`: "Unknown" bucket present for the null-merchant receipt; shares reconcile.
-- `byPaymentMethod`: `payment_method: null` row present; shares reconcile.
-- `timeseries`: zero-filled empty days present; explicit granularity honored; granularity-coarser-than-period throws `BadRequestException`.
-- `topExpenses`: returns in `amount DESC` order; respects `limit`; out-of-range `limit` rejected by DTO.
-- `summary`: `avg_receipt_value` correct; `top_categories` / `top_merchants` capped at 3.
-- **User isolation**: seed a second user with expenses and assert they don't leak into the first user's results for every method.
+`toBeDefined` test using `getRepositoryToken(Expense)` with a `{}` mock — matches `categories.service.spec.ts`. Real SQL coverage will come if/when the project adds a test-DB phase.
 
 ### `analytics.controller.spec.ts` (thin unit)
 
-For each handler: service method called with `(user.sub, dto)`; return value passed through.
+For each handler: service method called with `(user.sub, dto)`; return value passed through. Uses a hand-rolled service mock object — no DB, no TypeORM.
 
-### Test DB pattern
+### Manual smoke testing
 
-The existing `receipts` / `expenses` service specs are the reference — match their setup style before implementing. If they use a real test DB, mirror that. If they use mocked repositories, mirror that for the new spec (and note that SQL coverage moves to e2e).
+After implementation, verify against the running dev server with `curl` smokes documented in the plan. This is how endpoint-level behavior gets validated in this repo today.
 
 ## Open questions / follow-ups
 
