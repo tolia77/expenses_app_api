@@ -209,6 +209,54 @@ export class AnalyticsService {
       buckets: filled,
     };
   }
+
+  private async receiptAndExpenseCounts(
+    userId: string,
+    dto: AnalyticsQueryDto,
+  ) {
+    const { start, end } = getPeriodBounds(dto);
+    const row = await this.expenseRepository
+      .createQueryBuilder('expense')
+      .innerJoin('expense.receipt', 'receipt')
+      .select('COUNT(DISTINCT receipt.id)', 'receipt_count')
+      .addSelect('COUNT(expense.id)', 'expense_count')
+      .where('receipt.user_id = :userId', { userId })
+      .andWhere('receipt.purchased_at BETWEEN :start AND :end', { start, end })
+      .getRawOne();
+
+    return {
+      receipt_count: parseInt(row?.receipt_count ?? '0', 10) || 0,
+      expense_count: parseInt(row?.expense_count ?? '0', 10) || 0,
+    };
+  }
+
+  async summary(userId: string, dto: AnalyticsQueryDto) {
+    const [totalRow, counts, categories, merchants] = await Promise.all([
+      this.total(userId, dto),
+      this.receiptAndExpenseCounts(userId, dto),
+      this.byCategory(userId, dto),
+      this.byMerchant(userId, dto),
+    ]);
+
+    return {
+      total: totalRow.total,
+      receipt_count: counts.receipt_count,
+      expense_count: counts.expense_count,
+      avg_receipt_value: counts.receipt_count
+        ? round2(totalRow.total / counts.receipt_count)
+        : 0,
+      top_categories: categories.slice(0, 3).map((c) => ({
+        category_id: c.category_id,
+        category_name: c.category_name,
+        total: c.total,
+      })),
+      top_merchants: merchants.slice(0, 3).map((m) => ({
+        merchant_id: m.merchant_id,
+        merchant_name: m.merchant_name,
+        total: m.total,
+      })),
+    };
+  }
 }
 
 function round2(n: number): number {

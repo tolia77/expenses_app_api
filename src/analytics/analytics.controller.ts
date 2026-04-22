@@ -38,4 +38,9 @@ export class AnalyticsController {
   timeseries(@CurrentUser() user, @Query() dto: TimeseriesQueryDto) {
     return this.analyticsService.timeseries(user.sub, dto);
   }
+
+  @Get('summary')
+  summary(@CurrentUser() user, @Query() dto: AnalyticsQueryDto) {
+    return this.analyticsService.summary(user.sub, dto);
+  }
 }
