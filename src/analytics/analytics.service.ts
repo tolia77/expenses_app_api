@@ -21,16 +21,40 @@ export class AnalyticsService {
       .select('category.id', 'category_id')
       .addSelect('category.name', 'category_name')
       .addSelect('SUM(expense.price * COALESCE(expense.amount, 1))', 'total')
+      .addSelect('COUNT(DISTINCT receipt.id)', 'receipt_count')
+      .addSelect('COUNT(*)', 'expense_count')
+      .addSelect('MAX(receipt.purchased_at)', 'last_purchased_at')
       .where('receipt.user_id = :userId', { userId })
       .andWhere('receipt.purchased_at BETWEEN :start AND :end', { start, end })
       .groupBy('category.id')
       .addGroupBy('category.name')
+      .orderBy('total', 'DESC')
       .getRawMany();
 
-    return rows.map((r) => ({
+    const mapped = rows.map((r) => ({
       category_id: r.category_id,
       category_name: r.category_name,
       total: parseFloat(r.total ?? '0') || 0,
+      receipt_count: parseInt(r.receipt_count ?? '0', 10) || 0,
+      expense_count: parseInt(r.expense_count ?? '0', 10) || 0,
+      last_purchased_at: r.last_purchased_at
+        ? new Date(r.last_purchased_at).toISOString()
+        : null,
+    }));
+
+    const grandTotal = mapped.reduce((sum, row) => sum + row.total, 0);
+
+    return mapped.map((row) => ({
+      category_id: row.category_id,
+      category_name: row.category_name,
+      total: round2(row.total),
+      receipt_count: row.receipt_count,
+      expense_count: row.expense_count,
+      avg_expense: row.expense_count
+        ? round2(row.total / row.expense_count)
+        : 0,
+      share_pct: grandTotal ? round2((row.total / grandTotal) * 100) : 0,
+      last_purchased_at: row.last_purchased_at,
     }));
   }
 
@@ -46,4 +70,8 @@ export class AnalyticsService {
 
     return { total: parseFloat(row?.total ?? '0') || 0 };
   }
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
