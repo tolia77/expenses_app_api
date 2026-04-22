@@ -5,7 +5,7 @@ import { Queue } from 'bullmq';
 import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Receipt } from './entities/receipt.entity';
-import { ReceiptParse } from '../receipt-parse/receipt-parse.entity';
+import { ReceiptParse } from '../receipt-parse-worker/receipt-parse.entity';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { UpdateReceiptDto } from './dto/update-receipt.dto';
 import { FilterReceiptsDto } from './dto/filter-receipts.dto';
@@ -161,7 +161,7 @@ export class ReceiptsService {
     //    FLOW-01: each user-level upload is a distinct parse attempt (its own row).
     //    jobId uses a HYPHEN — `receipt-parse-${parse.id}` — the colon form
     //    throws synchronously in BullMQ (verified live in Phase 9).
-    //    defaultJobOptions (attempts=3, exponential 5s) live on ReceiptParseModule;
+    //    defaultJobOptions (attempts=3, exponential 5s) live on ReceiptParseWorkerModule;
     //    do NOT duplicate them here.
     const parse = await this.parseRepository.save(
       this.parseRepository.create({

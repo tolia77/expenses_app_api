@@ -2,7 +2,7 @@ import { Exclude, Expose, Type } from 'class-transformer';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { User } from 'src/users/user.entity';
 import { Expense } from 'src/expenses/expenses.entity';
-import { ReceiptParse } from 'src/receipt-parse/receipt-parse.entity';
+import { ReceiptParse } from 'src/receipt-parse-worker/receipt-parse.entity';
 import {
   Entity,
   Column,

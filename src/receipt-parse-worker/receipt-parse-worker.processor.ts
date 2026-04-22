@@ -51,8 +51,8 @@ export interface ReceiptParseJobData {
 // JobId convention: `receipt-parse-${parse.id}` (HYPHEN — BullMQ throws on a
 // 2-segment colon-separated custom id). Idempotency key at the queue level.
 @Processor('receipt-parse', { concurrency: 1 })
-export class ReceiptParseProcessor extends WorkerHost {
-  private readonly logger = new Logger(ReceiptParseProcessor.name);
+export class ReceiptParseWorkerProcessor extends WorkerHost {
+  private readonly logger = new Logger(ReceiptParseWorkerProcessor.name);
 
   constructor(
     @InjectRepository(ReceiptParse)
