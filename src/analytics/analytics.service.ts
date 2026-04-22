@@ -4,7 +4,9 @@ import { Repository } from 'typeorm';
 import { Expense } from '../expenses/expenses.entity';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 import { TopExpensesQueryDto } from './dto/top-expenses-query.dto';
-import { getPeriodBounds } from './util/period-bounds';
+import { TimeseriesQueryDto } from './dto/timeseries-query.dto';
+import { getPeriodBounds, resolveGranularity } from './util/period-bounds';
+import { generateBuckets, fillBuckets } from './util/timeseries-buckets';
 
 @Injectable()
 export class AnalyticsService {
@@ -174,6 +176,38 @@ export class AnalyticsService {
         : null,
       receipt_id: r.receipt_id,
     }));
+  }
+
+  async timeseries(userId: string, dto: TimeseriesQueryDto) {
+    const bounds = getPeriodBounds(dto);
+    const granularity = resolveGranularity(dto.period, dto.granularity, bounds);
+
+    const rows = await this.expenseRepository
+      .createQueryBuilder('expense')
+      .innerJoin('expense.receipt', 'receipt')
+      .select(`date_trunc('${granularity}', receipt.purchased_at)`, 'bucket')
+      .addSelect('SUM(expense.price * COALESCE(expense.amount, 1))', 'total')
+      .where('receipt.user_id = :userId', { userId })
+      .andWhere('receipt.purchased_at BETWEEN :start AND :end', {
+        start: bounds.start,
+        end: bounds.end,
+      })
+      .groupBy('bucket')
+      .orderBy('bucket', 'ASC')
+      .getRawMany();
+
+    const bucketRows = rows.map((r) => ({
+      bucket: new Date(r.bucket),
+      total: round2(parseFloat(r.total ?? '0') || 0),
+    }));
+    const buckets = generateBuckets(bounds.start, bounds.end, granularity);
+    const filled = fillBuckets(bucketRows, buckets);
+
+    return {
+      period: dto.period,
+      granularity,
+      buckets: filled,
+    };
   }
 }
 
