@@ -5,14 +5,14 @@ import { ReceiptsService } from './receipts.service';
 import { ReceiptsController } from './receipts.controller';
 import { MerchantsModule } from '../merchants/merchants.module';
 import { StorageModule } from '../storage/storage.module';
-import { ReceiptParseModule } from '../receipt-parse/receipt-parse.module';
+import { ReceiptParseWorkerModule } from '../receipt-parse-worker/receipt-parse-worker.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Receipt]),
     MerchantsModule,
     StorageModule,
-    ReceiptParseModule, // re-exports Repository<ReceiptParse> + Queue('receipt-parse')
+    ReceiptParseWorkerModule, // re-exports Repository<ReceiptParse> + Queue('receipt-parse')
   ],
   controllers: [ReceiptsController],
   providers: [ReceiptsService],

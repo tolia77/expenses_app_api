@@ -7,7 +7,7 @@ import AppDataSource from 'src/config/typeorm.config';
 import { Expense } from 'src/expenses/expenses.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Receipt } from 'src/receipts/entities/receipt.entity';
-import { ReceiptParse } from 'src/receipt-parse/receipt-parse.entity';
+import { ReceiptParse } from 'src/receipt-parse-worker/receipt-parse.entity';
 import { User } from 'src/users/user.entity';
 
 @Module({
@@ -27,7 +27,7 @@ import { User } from 'src/users/user.entity';
         synchronize: false,
         // Pool size headroom: worker concurrency (1) + HTTP path + future bumps.
         // Must stay >= (BullMQ worker concurrency + 2) — QUEUE-06. Bump in lockstep
-        // if the @Processor concurrency arg is increased in ReceiptParseProcessor.
+        // if the @Processor concurrency arg is increased in ReceiptParseWorkerProcessor.
         extra: { max: 20 },
       }),
     }),

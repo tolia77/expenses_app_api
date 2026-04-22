@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ReceiptParse } from './receipt-parse.entity';
-import { ReceiptParseProcessor } from './receipt-parse.processor';
+import { ReceiptParseWorkerProcessor } from './receipt-parse-worker.processor';
 import { ReceiptParserModule } from '../receipt-parser/receipt-parser.module';
 import { StorageModule } from '../storage/storage.module';
 import { Category } from '../categories/category.entity';
@@ -28,7 +28,7 @@ import { Receipt } from '../receipts/entities/receipt.entity';
     ReceiptParserModule, // Phase 10 — provides ReceiptParser abstract-class DI token
     StorageModule, // provides StorageService (for photo_key download in Phase 11)
   ],
-  providers: [ReceiptParseProcessor],
+  providers: [ReceiptParseWorkerProcessor],
   exports: [TypeOrmModule, BullModule],
 })
-export class ReceiptParseModule {}
+export class ReceiptParseWorkerModule {}
