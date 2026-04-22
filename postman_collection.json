@@ -2,7 +2,7 @@
   "info": {
     "name": "Expenses App API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "NestJS Expenses Tracker API — all routes. Phase 8: responses standardized with `{ data, meta }` envelope on list endpoints, `{ error: { code, message, details? } }` envelope on errors, snake_case keys throughout, nested `category` on expenses, `photo_url` (signed URL, no `photo_key`) on receipts."
+    "description": "NestJS Expenses Tracker API — all routes.\n\nPhase 8: responses standardized with `{ data, meta }` envelope on list endpoints, `{ error: { code, message, details? } }` envelope on errors, snake_case keys throughout, nested `category` on expenses, `photo_url` (signed URL, no `photo_key`) on receipts.\n\nPhase 10.1 (v2.0): Categories are now globally seeded and read-only — only `GET /categories` exists. POST / PATCH / DELETE removed. Category rows no longer carry `user_id`.\n\nPhase 11 (v2.0): `POST /receipts/:id/photo` now triggers an asynchronous parse — the upload returns immediately with a signed `photo_url`, and a BullMQ worker downloads the photo, calls an LLM (OpenRouter), and populates Receipt.merchant + purchased_at + Expense rows. Clients poll `GET /receipts/:id` and read `parses[0].status` (`pending` → `parsed` | `failed`). Each upload creates a new ReceiptParse row (re-uploading appends history)."
   },
   "variable": [
     {
@@ -195,50 +195,24 @@
     },
     {
       "name": "Categories",
+      "description": "Phase 10.1 (v2.0): categories are globally seeded and read-only. Only `GET /categories` exists; POST / PATCH / DELETE return 404.",
       "item": [
         {
-          "name": "Create Category",
+          "name": "Get All Categories",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "const res = pm.response.json();",
-                  "if (res.id) {",
-                  "  pm.collectionVariables.set('categoryId', res.id);",
+                  "if (res.data && res.data[0] && res.data[0].id) {",
+                  "  pm.collectionVariables.set('categoryId', res.data[0].id);",
                   "}"
                 ],
                 "type": "text/javascript"
               }
             }
           ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Groceries\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/categories",
-              "host": ["{{baseUrl}}"],
-              "path": ["categories"]
-            }
-          },
-          "response": [
-            {
-              "name": "201 Created",
-              "status": "Created",
-              "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n  \"name\": \"Groceries\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
-            }
-          ]
-        },
-        {
-          "name": "Get All Categories",
           "request": {
             "method": "GET",
             "url": {
@@ -257,7 +231,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n      \"name\": \"Groceries\",\n      \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n      \"name\": \"Groceries\",\n      \"created_at\": \"2026-04-21T10:00:00.000Z\",\n      \"updated_at\": \"2026-04-21T10:00:00.000Z\"\n    },\n    {\n      \"id\": \"a2b3c4d5-e6f7-4890-8123-4567890abcde\",\n      \"name\": \"Other\",\n      \"created_at\": \"2026-04-21T10:00:00.000Z\",\n      \"updated_at\": \"2026-04-21T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 12,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}"
             },
             {
               "name": "400 Validation Failed (limit out of range)",
@@ -265,80 +239,6 @@
               "code": 400,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
               "body": "{\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Validation failed\",\n    \"details\": [\n      { \"field\": \"limit\", \"message\": \"limit must not be greater than 100\" }\n    ]\n  }\n}"
-            }
-          ]
-        },
-        {
-          "name": "Get Category by ID",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/categories/{{categoryId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["categories", "{{categoryId}}"]
-            }
-          },
-          "response": [
-            {
-              "name": "200 OK",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n  \"name\": \"Groceries\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
-            },
-            {
-              "name": "404 Category Not Found",
-              "status": "Not Found",
-              "code": 404,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"error\": {\n    \"code\": \"CATEGORY_NOT_FOUND\",\n    \"message\": \"Category not found\"\n  }\n}"
-            }
-          ]
-        },
-        {
-          "name": "Update Category",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Food & Dining\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/categories/{{categoryId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["categories", "{{categoryId}}"]
-            }
-          },
-          "response": [
-            {
-              "name": "200 OK",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n  \"name\": \"Food & Dining\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n}"
-            }
-          ]
-        },
-        {
-          "name": "Delete Category",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/categories/{{categoryId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["categories", "{{categoryId}}"]
-            }
-          },
-          "response": [
-            {
-              "name": "204 No Content",
-              "status": "No Content",
-              "code": 204,
-              "header": [],
-              "body": ""
             }
           ]
         }
@@ -593,6 +493,7 @@
           "name": "Get Receipt by ID",
           "request": {
             "method": "GET",
+            "description": "Returns the receipt with eagerly loaded `merchant`, `expenses[]`, and `parses[]` (newest first). v2.0 polling pattern: after `POST /receipts/:id/photo`, poll this endpoint and inspect `parses[0].status` — `pending` (worker hasn't finished), `parsed` (success — `merchant` + `purchased_at` + `expenses[]` are populated), `failed` (terminal — `error_code` set).",
             "url": {
               "raw": "{{baseUrl}}/receipts/{{receiptId}}",
               "host": ["{{baseUrl}}"],
@@ -601,11 +502,25 @@
           },
           "response": [
             {
-              "name": "200 OK",
+              "name": "200 OK (parsed)",
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n  \"merchant\": {\n    \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n    \"name\": \"Walmart\",\n    \"address\": \"123 Main St\",\n    \"other_details\": null,\n    \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n  },\n  \"payment_method\": \"credit_card\",\n  \"purchased_at\": \"2026-04-15T12:00:00.000Z\",\n  \"other_details\": { \"store_number\": \"42\" },\n  \"photo_url\": null,\n  \"created_at\": \"2026-04-18T12:00:00.000Z\",\n  \"expenses\": []\n}"
+              "body": "{\n  \"id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n  \"merchant\": {\n    \"id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n    \"name\": \"Walmart\",\n    \"address\": \"123 Main St\",\n    \"other_details\": null,\n    \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\"\n  },\n  \"payment_method\": \"credit_card\",\n  \"purchased_at\": \"2026-04-15T12:00:00.000Z\",\n  \"other_details\": null,\n  \"photo_url\": \"http://localhost:9000/receipts-bucket/...?X-Amz-Signature=...\",\n  \"created_at\": \"2026-04-22T12:00:00.000Z\",\n  \"expenses\": [\n    {\n      \"id\": \"e5f6a7b8-c9d0-4123-8456-789abcdef012\",\n      \"description\": \"Bread\",\n      \"amount\": \"3.99\",\n      \"category\": { \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\", \"name\": \"Groceries\" }\n    },\n    {\n      \"id\": \"e6f7a8b9-c0d1-4234-8567-89abcdef0123\",\n      \"description\": \"Milk\",\n      \"amount\": \"4.50\",\n      \"category\": { \"id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\", \"name\": \"Groceries\" }\n    }\n  ],\n  \"parses\": [\n    {\n      \"id\": \"f7a8b9c0-d1e2-4345-8678-9abcdef01234\",\n      \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n      \"status\": \"parsed\",\n      \"model\": \"google/gemini-2.5-flash\",\n      \"attempts\": 1,\n      \"duration_ms\": 1842,\n      \"prompt_tokens\": 1247,\n      \"completion_tokens\": 89,\n      \"total_tokens\": 1336,\n      \"error_code\": null,\n      \"error_message\": null,\n      \"created_at\": \"2026-04-22T12:00:01.000Z\",\n      \"started_at\": \"2026-04-22T12:00:01.500Z\",\n      \"finished_at\": \"2026-04-22T12:00:03.342Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "200 OK (parse pending)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n  \"merchant\": null,\n  \"payment_method\": null,\n  \"purchased_at\": null,\n  \"other_details\": null,\n  \"photo_url\": \"http://localhost:9000/receipts-bucket/...?X-Amz-Signature=...\",\n  \"created_at\": \"2026-04-22T12:00:00.000Z\",\n  \"expenses\": [],\n  \"parses\": [\n    {\n      \"id\": \"f7a8b9c0-d1e2-4345-8678-9abcdef01234\",\n      \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n      \"status\": \"pending\",\n      \"model\": null,\n      \"attempts\": 0,\n      \"duration_ms\": null,\n      \"prompt_tokens\": null,\n      \"completion_tokens\": null,\n      \"total_tokens\": null,\n      \"error_code\": null,\n      \"error_message\": null,\n      \"created_at\": \"2026-04-22T12:00:00.500Z\",\n      \"started_at\": null,\n      \"finished_at\": null\n    }\n  ]\n}"
+            },
+            {
+              "name": "200 OK (parse failed — not_a_receipt)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n  \"user_id\": \"c3d4e5f6-a7b8-4901-8234-56789abcdef0\",\n  \"merchant\": null,\n  \"payment_method\": null,\n  \"purchased_at\": null,\n  \"other_details\": null,\n  \"photo_url\": \"http://localhost:9000/receipts-bucket/...?X-Amz-Signature=...\",\n  \"created_at\": \"2026-04-22T12:00:00.000Z\",\n  \"expenses\": [],\n  \"parses\": [\n    {\n      \"id\": \"f7a8b9c0-d1e2-4345-8678-9abcdef01234\",\n      \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-6789abcdef01\",\n      \"status\": \"failed\",\n      \"model\": \"google/gemini-2.5-flash\",\n      \"attempts\": 1,\n      \"duration_ms\": 1204,\n      \"prompt_tokens\": 1180,\n      \"completion_tokens\": 12,\n      \"total_tokens\": 1192,\n      \"error_code\": \"not_a_receipt\",\n      \"error_message\": \"is_receipt=false\",\n      \"created_at\": \"2026-04-22T12:00:00.500Z\",\n      \"started_at\": \"2026-04-22T12:00:01.000Z\",\n      \"finished_at\": \"2026-04-22T12:00:02.204Z\"\n    }\n  ]\n}"
             },
             {
               "name": "404 Receipt Not Found",
@@ -647,6 +562,7 @@
           "name": "Upload Receipt Photo",
           "request": {
             "method": "POST",
+            "description": "Uploads a receipt photo (JPEG / PNG / HEIC, magic-byte validated). v2.0 side effect: after the photo lands in S3, a `pending` ReceiptParse row is inserted and a BullMQ job is enqueued (`receipt-parse-<parse.id>`). The HTTP response returns immediately with the signed photo URL — the LLM parse runs asynchronously. Poll `GET /receipts/:id` and inspect `parses[0].status` to see the parse outcome. Re-uploading creates a NEW ReceiptParse row (each upload = distinct attempt).",
             "header": [],
             "body": {
               "mode": "formdata",
@@ -670,7 +586,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"photo_url\": \"http://localhost:9000/receipts/receipts/d4e5f6a7.../photo.jpg?X-Amz-Signature=...\"\n}"
+              "body": "{\n  \"photo_url\": \"http://localhost:9000/receipts-bucket/receipts/d4e5f6a7.../photo.jpg?X-Amz-Signature=...\"\n}"
             },
             {
               "name": "400 Invalid Photo Type (.txt)",
