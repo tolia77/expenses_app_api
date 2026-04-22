@@ -58,6 +58,46 @@ export class AnalyticsService {
     }));
   }
 
+  async byMerchant(userId: string, dto: AnalyticsQueryDto) {
+    const { start, end } = getPeriodBounds(dto);
+    const rows = await this.expenseRepository
+      .createQueryBuilder('expense')
+      .innerJoin('expense.receipt', 'receipt')
+      .leftJoin('receipt.merchant', 'merchant')
+      .select('merchant.id', 'merchant_id')
+      .addSelect('merchant.name', 'merchant_name')
+      .addSelect('SUM(expense.price * COALESCE(expense.amount, 1))', 'total')
+      .addSelect('COUNT(DISTINCT receipt.id)', 'receipt_count')
+      .addSelect('MAX(receipt.purchased_at)', 'last_purchased_at')
+      .where('receipt.user_id = :userId', { userId })
+      .andWhere('receipt.purchased_at BETWEEN :start AND :end', { start, end })
+      .groupBy('merchant.id')
+      .addGroupBy('merchant.name')
+      .orderBy('total', 'DESC')
+      .getRawMany();
+
+    const mapped = rows.map((r) => ({
+      merchant_id: r.merchant_id ?? null,
+      merchant_name: r.merchant_name ?? 'Unknown',
+      total: parseFloat(r.total ?? '0') || 0,
+      receipt_count: parseInt(r.receipt_count ?? '0', 10) || 0,
+      last_purchased_at: r.last_purchased_at
+        ? new Date(r.last_purchased_at).toISOString()
+        : null,
+    }));
+
+    const grandTotal = mapped.reduce((sum, row) => sum + row.total, 0);
+
+    return mapped.map((row) => ({
+      merchant_id: row.merchant_id,
+      merchant_name: row.merchant_name,
+      total: round2(row.total),
+      receipt_count: row.receipt_count,
+      share_pct: grandTotal ? round2((row.total / grandTotal) * 100) : 0,
+      last_purchased_at: row.last_purchased_at,
+    }));
+  }
+
   async total(userId: string, dto: AnalyticsQueryDto) {
     const { start, end } = getPeriodBounds(dto);
     const row = await this.expenseRepository
