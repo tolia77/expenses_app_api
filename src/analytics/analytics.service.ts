@@ -141,7 +141,7 @@ export class AnalyticsService {
       .andWhere('receipt.purchased_at BETWEEN :start AND :end', { start, end })
       .getRawOne();
 
-    return { total: parseFloat(row?.total ?? '0') || 0 };
+    return { total: round2(parseFloat(row?.total ?? '0') || 0) };
   }
 
   async topExpenses(userId: string, dto: TopExpensesQueryDto) {
