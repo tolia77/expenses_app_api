@@ -251,7 +251,23 @@ In JS after the query: compute `grand_total = sum(rows.total)`, then per row `sh
 
 ### `byMerchant`
 
-Same shape, `LEFT JOIN merchant`, `GROUP BY merchant.id, merchant.name`. Postgres groups all null `merchant.id` rows into a single bucket. JS mapper emits `merchant_name: row.merchant_name ?? 'Unknown'`.
+```sql
+SELECT
+  merchant.id                                             AS merchant_id,
+  merchant.name                                           AS merchant_name,
+  SUM(expense.price * COALESCE(expense.amount, 1))        AS total,
+  COUNT(DISTINCT receipt.id)                              AS receipt_count,
+  MAX(receipt.purchased_at)                               AS last_purchased_at
+FROM expense
+INNER JOIN receipt  ON receipt.id = expense.receipt_id
+LEFT  JOIN merchant ON merchant.id = receipt.merchant_id
+WHERE receipt.user_id = :userId
+  AND receipt.purchased_at BETWEEN :start AND :end
+GROUP BY merchant.id, merchant.name
+ORDER BY total DESC
+```
+
+Postgres groups all null `merchant.id` rows into a single bucket. JS mapper emits `merchant_name: row.merchant_name ?? 'Unknown'` and computes `share_pct` per row from the summed totals. No `expense_count` field on this endpoint (not listed in the response schema).
 
 ### `byPaymentMethod`
 
@@ -365,6 +381,7 @@ Four queries in parallel. Simpler than a custom multi-aggregate, and the groupin
 - **Divide-by-zero**: `avg_expense`, `avg_receipt_value`, `share_pct` all guarded before rounding.
 - **Numeric precision**: Postgres `SUM` on `decimal` returns a string via TypeORM. Use existing `parseFloat(r.total ?? '0') || 0` pattern. Round displayed values to 2 decimals using a shared `round2(n) = Math.round(n * 100) / 100` helper.
 - **SQL injection on `granularity`**: only values from the enum are forwarded to `date_trunc`; never raw client input.
+- **Receipts with null `purchased_at`**: implicitly excluded from every endpoint. `receipt.purchased_at BETWEEN :start AND :end` evaluates to `NULL` (not `true`) when the column is null, so such rows never match. This matches existing `GET /analytics/total` behavior. Test fixtures should not rely on a null-dated receipt contributing to any total.
 
 ## Testing strategy
 
