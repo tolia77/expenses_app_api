@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Expense } from '../expenses/expenses.entity';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
+import { getPeriodBounds } from './util/period-bounds';
 
 @Injectable()
 export class AnalyticsService {
@@ -12,7 +13,7 @@ export class AnalyticsService {
   ) {}
 
   async byCategory(userId: string, dto: AnalyticsQueryDto) {
-    const { start, end } = this.getPeriodBounds(dto);
+    const { start, end } = getPeriodBounds(dto);
     const rows = await this.expenseRepository
       .createQueryBuilder('expense')
       .innerJoin('expense.receipt', 'receipt')
@@ -34,7 +35,7 @@ export class AnalyticsService {
   }
 
   async total(userId: string, dto: AnalyticsQueryDto) {
-    const { start, end } = this.getPeriodBounds(dto);
+    const { start, end } = getPeriodBounds(dto);
     const row = await this.expenseRepository
       .createQueryBuilder('expense')
       .innerJoin('expense.receipt', 'receipt')
@@ -44,60 +45,5 @@ export class AnalyticsService {
       .getRawOne();
 
     return { total: parseFloat(row?.total ?? '0') || 0 };
-  }
-
-  private getPeriodBounds(dto: AnalyticsQueryDto): { start: Date; end: Date } {
-    const now = new Date();
-    switch (dto.period) {
-      case 'day': {
-        const start = new Date(now);
-        start.setUTCHours(0, 0, 0, 0);
-        const end = new Date(now);
-        end.setUTCHours(23, 59, 59, 999);
-        return { start, end };
-      }
-      case 'week': {
-        const day = now.getUTCDay(); // 0=Sunday
-        const start = new Date(now);
-        start.setUTCDate(now.getUTCDate() - day);
-        start.setUTCHours(0, 0, 0, 0);
-        const end = new Date(start);
-        end.setUTCDate(start.getUTCDate() + 6);
-        end.setUTCHours(23, 59, 59, 999);
-        return { start, end };
-      }
-      case 'month': {
-        const start = new Date(
-          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
-        );
-        const end = new Date(
-          Date.UTC(
-            now.getUTCFullYear(),
-            now.getUTCMonth() + 1,
-            0,
-            23,
-            59,
-            59,
-            999,
-          ),
-        );
-        return { start, end };
-      }
-      case 'year': {
-        const start = new Date(
-          Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0, 0),
-        );
-        const end = new Date(
-          Date.UTC(now.getUTCFullYear(), 11, 31, 23, 59, 59, 999),
-        );
-        return { start, end };
-      }
-      case 'custom': {
-        return {
-          start: new Date(dto.from + 'T00:00:00.000Z'),
-          end: new Date(dto.to + 'T23:59:59.999Z'),
-        };
-      }
-    }
   }
 }
