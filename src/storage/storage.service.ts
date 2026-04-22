@@ -81,7 +81,7 @@ export class StorageService implements OnModuleInit {
     // transformToByteArray(). TypeScript's union for `Body` doesn't expose
     // the mixin method without a cast — this `as any` cast is the idiomatic
     // pattern in the AWS SDK v3 Node.js docs.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const bytes = await (response.Body as any).transformToByteArray();
     return Buffer.from(bytes);
   }

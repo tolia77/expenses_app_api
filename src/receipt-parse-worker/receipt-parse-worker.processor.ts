@@ -5,7 +5,10 @@ import { Job, UnrecoverableError } from 'bullmq';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { ReceiptParse } from './receipt-parse.entity';
-import { ReceiptParser, ParseResult } from '../receipt-parser/receipt-parser.interface';
+import {
+  ReceiptParser,
+  ParseResult,
+} from '../receipt-parser/receipt-parser.interface';
 import { StorageService } from '../storage/storage.service';
 import { Category } from '../categories/category.entity';
 import { FALLBACK_CATEGORY_NAME } from '../categories/categories.constants';
@@ -393,7 +396,8 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
     }
     if (name === 'OpenRouterError') {
       // err.details.status exists on OpenRouterError per src/receipt-parser/errors.ts
-      const status = (err as { details?: { status?: number } }).details?.status ?? 0;
+      const status =
+        (err as { details?: { status?: number } }).details?.status ?? 0;
       if (status === 401 || status === 403) {
         return { errorCode: 'auth_failed', retryable: false };
       }
