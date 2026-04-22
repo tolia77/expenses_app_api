@@ -17,6 +17,11 @@ export class AnalyticsController {
     return this.analyticsService.byMerchant(user.sub, dto);
   }
 
+  @Get('by-payment-method')
+  byPaymentMethod(@CurrentUser() user, @Query() dto: AnalyticsQueryDto) {
+    return this.analyticsService.byPaymentMethod(user.sub, dto);
+  }
+
   @Get('total')
   total(@CurrentUser() user, @Query() dto: AnalyticsQueryDto) {
     return this.analyticsService.total(user.sub, dto);

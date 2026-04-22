@@ -98,6 +98,36 @@ export class AnalyticsService {
     }));
   }
 
+  async byPaymentMethod(userId: string, dto: AnalyticsQueryDto) {
+    const { start, end } = getPeriodBounds(dto);
+    const rows = await this.expenseRepository
+      .createQueryBuilder('expense')
+      .innerJoin('expense.receipt', 'receipt')
+      .select('receipt.payment_method', 'payment_method')
+      .addSelect('SUM(expense.price * COALESCE(expense.amount, 1))', 'total')
+      .addSelect('COUNT(DISTINCT receipt.id)', 'receipt_count')
+      .where('receipt.user_id = :userId', { userId })
+      .andWhere('receipt.purchased_at BETWEEN :start AND :end', { start, end })
+      .groupBy('receipt.payment_method')
+      .orderBy('total', 'DESC')
+      .getRawMany();
+
+    const mapped = rows.map((r) => ({
+      payment_method: r.payment_method ?? null,
+      total: parseFloat(r.total ?? '0') || 0,
+      receipt_count: parseInt(r.receipt_count ?? '0', 10) || 0,
+    }));
+
+    const grandTotal = mapped.reduce((sum, row) => sum + row.total, 0);
+
+    return mapped.map((row) => ({
+      payment_method: row.payment_method,
+      total: round2(row.total),
+      receipt_count: row.receipt_count,
+      share_pct: grandTotal ? round2((row.total / grandTotal) * 100) : 0,
+    }));
+  }
+
   async total(userId: string, dto: AnalyticsQueryDto) {
     const { start, end } = getPeriodBounds(dto);
     const row = await this.expenseRepository
