@@ -1,3 +1,5 @@
+import { parseModelChain } from './parse-model-chain';
+
 export default () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   database: {
@@ -26,7 +28,7 @@ export default () => ({
   },
   ai: {
     apiKey: process.env.OPENROUTER_API_KEY,
-    model: process.env.AI_MODEL || 'google/gemini-2.5-flash',
+    modelChain: parseModelChain(process.env.AI_MODEL_CHAIN, process.env.AI_MODEL),
     baseUrl: process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1',
   },
 });
