@@ -138,7 +138,11 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
     const model = selectTierModel(job.attemptsMade, this.modelChain);
     let parseResult: ParseResult;
     try {
-      parseResult = await this.receiptParser.parse(photoBuffer, categories, model);
+      parseResult = await this.receiptParser.parse(
+        photoBuffer,
+        categories,
+        model,
+      );
     } catch (err) {
       const durationMs = Date.now() - startedAt;
       const { errorCode, retryable } = this.classifyParserError(err);
@@ -176,7 +180,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
         throw new UnrecoverableError(errorCode);
       }
       // Retryable — rethrow original error so BullMQ applies exponential backoff
-      // per defaultJobOptions (attempts=3, 5s exp).
+      // per defaultJobOptions (attempts=chain.length, 5s exp).
       throw err;
     }
 
@@ -376,8 +380,9 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
 
   /**
    * Final-attempt detection. BullMQ's attemptsMade is 0 on the first try.
-   * opts.attempts comes from defaultJobOptions (3 — Phase 9). Returns true when
-   * this is the last attempt before BullMQ marks the job terminally failed.
+   * opts.attempts comes from defaultJobOptions (chain.length — pinned in
+   * receipt-parse-worker.module.ts). Returns true when this is the last
+   * attempt before BullMQ marks the job terminally failed.
    */
   private isFinalAttempt(job: Job): boolean {
     const maxAttempts = job.opts.attempts ?? 1;
