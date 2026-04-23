@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ReceiptParse } from './receipt-parse.entity';
 import { ReceiptParseWorkerProcessor } from './receipt-parse-worker.processor';
@@ -10,23 +11,33 @@ import { Receipt } from '../receipts/entities/receipt.entity';
 
 @Module({
   imports: [
-    // forFeature([ReceiptParse, Category, Receipt]):
-    //   - ReceiptParse — existing, processor uses it for idempotency guard + terminal update
-    //   - Category     — processor loads all categories once per job (EXTRACT-03 fallback lookup)
-    //   - Receipt      — processor loads the Receipt to get photo_key (FLOW-03 — Open Question #1 in RESEARCH.md)
     TypeOrmModule.forFeature([ReceiptParse, Category, Receipt]),
-    BullModule.registerQueue({
+    BullModule.registerQueueAsync({
       name: 'receipt-parse',
-      // Single source of truth — do NOT duplicate these on per-.add() calls.
-      defaultJobOptions: {
-        attempts: 3, // 1 initial + 2 retries (BullMQ counts initial attempt)
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: { count: 100 },
-        removeOnFail: { count: 500, age: 7 * 24 * 3600 }, // age in seconds = 7 days
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const chain = config.get<string[]>('ai.modelChain');
+        if (!chain || chain.length === 0) {
+          throw new Error(
+            'ai.modelChain is empty — check AI_MODEL_CHAIN env configuration',
+          );
+        }
+        return {
+          // attempts is pinned to chain.length so BullMQ's attemptsMade walks
+          // 0..chain.length-1 across the retry sequence — the tier selection
+          // in ReceiptParseWorkerProcessor depends on this invariant.
+          defaultJobOptions: {
+            attempts: chain.length,
+            backoff: { type: 'exponential', delay: 5000 },
+            removeOnComplete: { count: 100 },
+            removeOnFail: { count: 500, age: 7 * 24 * 3600 },
+          },
+        };
       },
     }),
-    ReceiptParserModule, // Phase 10 — provides ReceiptParser abstract-class DI token
-    StorageModule, // provides StorageService (for photo_key download in Phase 11)
+    ReceiptParserModule,
+    StorageModule,
   ],
   providers: [ReceiptParseWorkerProcessor],
   exports: [TypeOrmModule, BullModule],
