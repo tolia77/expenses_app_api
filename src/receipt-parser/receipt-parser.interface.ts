@@ -55,5 +55,9 @@ export interface ParseResult {
  * in the prompt, ids returned in ParsedReceipt.line_items[].category_id).
  */
 export abstract class ReceiptParser {
-  abstract parse(photo: Buffer, categories: Category[]): Promise<ParseResult>;
+  abstract parse(
+    photo: Buffer,
+    categories: Category[],
+    model: string,
+  ): Promise<ParseResult>;
 }
