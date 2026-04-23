@@ -27,7 +27,7 @@ describe('selectTierModel', () => {
 
   it('throws when chain is empty', () => {
     expect(() => selectTierModel(0, [])).toThrow(
-      'modelChain is empty — check AI_MODEL_CHAIN env configuration',
+      'ai.modelChain is empty — check AI_MODEL_CHAIN env configuration',
     );
   });
 });

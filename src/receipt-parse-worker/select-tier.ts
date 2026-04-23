@@ -12,7 +12,7 @@ export function selectTierModel(
 ): string {
   if (chain.length === 0) {
     throw new Error(
-      'modelChain is empty — check AI_MODEL_CHAIN env configuration',
+      'ai.modelChain is empty — check AI_MODEL_CHAIN env configuration',
     );
   }
   const tier = Math.min(attemptsMade, chain.length - 1);
