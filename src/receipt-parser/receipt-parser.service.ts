@@ -40,7 +40,6 @@ function sanitizeExcerpt(input: string): string {
 export class ReceiptParserOpenRouter extends ReceiptParser {
   private readonly logger = new Logger(ReceiptParserOpenRouter.name);
   private readonly client: OpenAI;
-  private readonly model: string;
 
   constructor(private readonly config: ConfigService) {
     super();
@@ -59,11 +58,6 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
         'ai.baseUrl is not configured (expected AI_BASE_URL env).',
       );
     }
-    this.model =
-      this.config.get<string>('ai.model') ?? 'google/gemini-2.5-flash';
-    // Pinned dated alias (for reference — keep if model drift ever bites per Pitfall 11):
-    //   google/gemini-2.5-flash-preview-09-2025
-
     this.client = new OpenAI({
       apiKey,
       baseURL,
@@ -77,7 +71,11 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
     });
   }
 
-  async parse(photo: Buffer, categories: Category[]): Promise<ParseResult> {
+  async parse(
+    photo: Buffer,
+    categories: Category[],
+    model: string,
+  ): Promise<ParseResult> {
     const startedAt = performance.now();
 
     // --- Step 1: preprocess image (throws ImageProcessingError on bad input) ---
@@ -97,7 +95,7 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
           body: unknown,
         ) => Promise<OpenAI.Chat.Completions.ChatCompletion>
       )({
-        model: this.model,
+        model,
         stream: false,
         messages: [
           { role: 'system', content: buildSystemPrompt(categoryNames) },
@@ -216,7 +214,7 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
 
     return {
       data: { ...result.data, line_items: lineItemsWithIds },
-      model: completion.model, // AI-09 — actual model used (may differ from this.model if OpenRouter remapped)
+      model: completion.model, // AI-09 — actual model used (may differ from model arg if OpenRouter remapped)
       usage: {
         prompt_tokens: completion.usage?.prompt_tokens ?? 0,
         completion_tokens: completion.usage?.completion_tokens ?? 0,
