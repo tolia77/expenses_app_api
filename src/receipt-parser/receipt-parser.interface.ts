@@ -51,8 +51,10 @@ export interface ParseResult {
  * The seam exists so Phase 12+ can swap in fallback providers (RESIL-03) or
  * test doubles without touching call sites.
  *
- * Implementations receive a photo buffer + the user's Category list (names used
- * in the prompt, ids returned in ParsedReceipt.line_items[].category_id).
+ * Implementations receive a photo buffer, the user's Category list (names used
+ * in the prompt, ids returned in ParsedReceipt.line_items[].category_id), and
+ * the model identifier to use for this attempt — caller-owned so the worker
+ * can escalate model tier across BullMQ retries.
  */
 export abstract class ReceiptParser {
   abstract parse(
