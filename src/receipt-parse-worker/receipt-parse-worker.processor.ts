@@ -72,7 +72,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
     @Inject(ReceiptParser)
     private readonly receiptParser: ReceiptParser,
     private readonly storageService: StorageService,
-    config: ConfigService,
+    config: ConfigService, // consumed in constructor only; not stored as a field
   ) {
     super();
     const chain = config.get<string[]>('ai.modelChain');
