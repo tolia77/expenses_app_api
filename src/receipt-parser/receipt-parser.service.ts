@@ -67,7 +67,7 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
         'X-Title': 'expenses-app-api',
       },
       timeout: 60_000, // 60s; Gemini Flash + vision typically completes in 10–30s
-      maxRetries: 0, // BullMQ (Phase 9 attempts:3 + exponential backoff) owns retry policy
+      maxRetries: 0, // BullMQ (attempts=chain.length + exponential backoff) owns retry policy
     });
   }
 
