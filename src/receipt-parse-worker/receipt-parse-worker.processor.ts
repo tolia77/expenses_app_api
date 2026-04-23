@@ -1,4 +1,5 @@
 import { Logger, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Job, UnrecoverableError } from 'bullmq';
@@ -10,6 +11,7 @@ import {
   ParseResult,
 } from '../receipt-parser/receipt-parser.interface';
 import { StorageService } from '../storage/storage.service';
+import { selectTierModel } from './select-tier';
 import { Category } from '../categories/category.entity';
 import { FALLBACK_CATEGORY_NAME } from '../categories/categories.constants';
 import { Receipt } from '../receipts/entities/receipt.entity';
@@ -56,6 +58,7 @@ export interface ReceiptParseJobData {
 @Processor('receipt-parse', { concurrency: 1 })
 export class ReceiptParseWorkerProcessor extends WorkerHost {
   private readonly logger = new Logger(ReceiptParseWorkerProcessor.name);
+  private readonly modelChain: readonly string[];
 
   constructor(
     @InjectRepository(ReceiptParse)
@@ -69,8 +72,16 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
     @Inject(ReceiptParser)
     private readonly receiptParser: ReceiptParser,
     private readonly storageService: StorageService,
+    config: ConfigService,
   ) {
     super();
+    const chain = config.get<string[]>('ai.modelChain');
+    if (!chain || chain.length === 0) {
+      throw new Error(
+        'ai.modelChain is empty — check AI_MODEL_CHAIN env configuration',
+      );
+    }
+    this.modelChain = chain;
   }
 
   async process(job: Job<ReceiptParseJobData>): Promise<void> {
@@ -121,9 +132,13 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
     const categories = await this.categoryRepo.find();
 
     // --- 4. Call parser (outside tx) — classify any thrown error ---
+    // Model tier escalates with attempt number. On a chain of length N,
+    // BullMQ is configured with attempts=N (see receipt-parse-worker.module.ts
+    // after Task 5), so attemptsMade walks 0..N-1 over the retry sequence.
+    const model = selectTierModel(job.attemptsMade, this.modelChain);
     let parseResult: ParseResult;
     try {
-      parseResult = await this.receiptParser.parse(photoBuffer, categories);
+      parseResult = await this.receiptParser.parse(photoBuffer, categories, model);
     } catch (err) {
       const durationMs = Date.now() - startedAt;
       const { errorCode, retryable } = this.classifyParserError(err);
@@ -151,7 +166,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
         // stays clean). Log format is OWNED by the helper; here we inline it
         // rather than creating a second log-only helper.
         this.logger.error(
-          `parse_err parse_id=${parse_id} error_code=${errorCode} class=${errName} message=${errMessage.slice(0, 120)}`,
+          `parse_err parse_id=${parse_id} error_code=${errorCode} class=${errName} model=${model} message=${errMessage.slice(0, 120)}`,
         );
       }
 
@@ -202,7 +217,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
       } else {
         // Non-final attempt — log only, no DB write. Stays status='pending'.
         this.logger.error(
-          `parse_err parse_id=${parse_id} error_code=zero_line_items class=ZeroLineItemsError message=parse succeeded but no line_items extracted`,
+          `parse_err parse_id=${parse_id} error_code=zero_line_items class=ZeroLineItemsError model=${model} message=parse succeeded but no line_items extracted`,
         );
       }
       // Retry (or final-attempt: rethrow so BullMQ registers the failure).
