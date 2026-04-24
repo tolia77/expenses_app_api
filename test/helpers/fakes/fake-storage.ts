@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { StorageService } from '../../../src/storage/storage.service';
 
 /**
  * Test double for StorageService. Records uploads/deletes in memory so tests
  * can assert on side effects. Method names match StorageService 1:1:
  * upload, download, delete, getSignedUrl, ensureBucket.
  */
-@Injectable()
 export class FakeStorage {
   uploads: Array<{ key: string; buffer: Buffer; contentType: string }> = [];
   deletes: string[] = [];
@@ -41,3 +40,12 @@ export class FakeStorage {
     this.downloads = {};
   }
 }
+
+// Compile-time check: if StorageService's public surface changes in a way that
+// breaks this fake, this line fails to type-check. Turns silent drift into a
+// build error.
+const _storageSurfaceCheck: Pick<
+  StorageService,
+  'upload' | 'download' | 'delete' | 'getSignedUrl' | 'ensureBucket'
+> = new FakeStorage();
+void _storageSurfaceCheck;
