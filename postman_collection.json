@@ -851,7 +851,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "[\n  {\n    \"category_id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"category_name\": \"Groceries\",\n    \"total\": 12.5\n  }\n]"
+              "body": "[\n  {\n    \"category_id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"category_name\": \"Groceries\",\n    \"total\": 12.5,\n    \"receipt_count\": 3,\n    \"expense_count\": 8,\n    \"avg_expense\": 1.56,\n    \"share_pct\": 34.5,\n    \"last_purchased_at\": \"2026-04-20T14:30:00.000Z\"\n  }\n]"
             }
           ]
         },
@@ -876,7 +876,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "[\n  {\n    \"category_id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"category_name\": \"Groceries\",\n    \"total\": 47.25\n  }\n]"
+              "body": "[\n  {\n    \"category_id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\",\n    \"category_name\": \"Groceries\",\n    \"total\": 47.25,\n    \"receipt_count\": 11,\n    \"expense_count\": 32,\n    \"avg_expense\": 1.48,\n    \"share_pct\": 32.1,\n    \"last_purchased_at\": \"2026-11-18T09:15:00.000Z\"\n  }\n]"
             },
             {
               "name": "400 Validation Failed (custom without from/to)",
@@ -884,6 +884,183 @@
               "code": 400,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
               "body": "{\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Validation failed\",\n    \"details\": [\n      { \"field\": \"from\", \"message\": \"from should not be empty\" },\n      { \"field\": \"to\", \"message\": \"to should not be empty\" }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "By Merchant (month)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/by-merchant?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "by-merchant"],
+              "query": [
+                { "key": "period", "value": "month" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK (Unknown bucket for null merchants)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"merchant_id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\",\n    \"merchant_name\": \"Starbucks\",\n    \"total\": 123.45,\n    \"receipt_count\": 7,\n    \"share_pct\": 62.3,\n    \"last_purchased_at\": \"2026-04-20T14:30:00.000Z\"\n  },\n  {\n    \"merchant_id\": null,\n    \"merchant_name\": \"Unknown\",\n    \"total\": 74.55,\n    \"receipt_count\": 2,\n    \"share_pct\": 37.7,\n    \"last_purchased_at\": \"2026-04-10T09:00:00.000Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "By Payment Method (month)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/by-payment-method?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "by-payment-method"],
+              "query": [
+                { "key": "period", "value": "month" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK (null payment_method retained)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"payment_method\": \"card\",\n    \"total\": 234.56,\n    \"receipt_count\": 15,\n    \"share_pct\": 85.4\n  },\n  {\n    \"payment_method\": null,\n    \"total\": 40.0,\n    \"receipt_count\": 2,\n    \"share_pct\": 14.6\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Timeseries (month, auto granularity)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/timeseries?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "timeseries"],
+              "query": [
+                { "key": "period", "value": "month" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK (auto-pick: month → day, zero-filled)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"period\": \"month\",\n  \"granularity\": \"day\",\n  \"buckets\": [\n    { \"bucket\": \"2026-04-01T00:00:00.000Z\", \"total\": 12.5 },\n    { \"bucket\": \"2026-04-02T00:00:00.000Z\", \"total\": 0 },\n    { \"bucket\": \"2026-04-03T00:00:00.000Z\", \"total\": 45.7 }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Timeseries (month, explicit week granularity)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/timeseries?period=month&granularity=week",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "timeseries"],
+              "query": [
+                { "key": "period", "value": "month" },
+                { "key": "granularity", "value": "week" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK (ISO-Monday-aligned weekly buckets)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"period\": \"month\",\n  \"granularity\": \"week\",\n  \"buckets\": [\n    { \"bucket\": \"2026-03-30T00:00:00.000Z\", \"total\": 58.2 },\n    { \"bucket\": \"2026-04-06T00:00:00.000Z\", \"total\": 73.4 },\n    { \"bucket\": \"2026-04-13T00:00:00.000Z\", \"total\": 64.8 },\n    { \"bucket\": \"2026-04-20T00:00:00.000Z\", \"total\": 45.1 },\n    { \"bucket\": \"2026-04-27T00:00:00.000Z\", \"total\": 0 }\n  ]\n}"
+            },
+            {
+              "name": "400 granularity must be finer than period",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"granularity must be finer than period\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Top Expenses (month, default limit 10)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/top-expenses?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "top-expenses"],
+              "query": [
+                { "key": "period", "value": "month" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK (up to 10, sorted amount DESC)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"expense_id\": \"c3d4e5f6-a7b8-4901-8234-567890abcdef\",\n    \"name\": \"MacBook Pro\",\n    \"amount\": 2499.99,\n    \"category_name\": \"Electronics\",\n    \"merchant_name\": \"Apple Store\",\n    \"purchased_at\": \"2026-04-20T14:30:00.000Z\",\n    \"receipt_id\": \"d4e5f6a7-b8c9-4012-8345-67890abcdef0\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Top Expenses (month, limit=3)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/top-expenses?period=month&limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "top-expenses"],
+              "query": [
+                { "key": "period", "value": "month" },
+                { "key": "limit", "value": "3" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[]"
+            },
+            {
+              "name": "400 limit out of range (>100)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Validation failed\",\n    \"details\": [\n      { \"field\": \"limit\", \"message\": \"limit must not be greater than 100\" }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Summary (month)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/summary?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "summary"],
+              "query": [
+                { "key": "period", "value": "month" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK (dashboard payload)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"total\": 1500.75,\n  \"receipt_count\": 42,\n  \"expense_count\": 137,\n  \"avg_receipt_value\": 35.73,\n  \"top_categories\": [\n    { \"category_id\": \"a1b2c3d4-e5f6-4789-8012-34567890abcd\", \"category_name\": \"Food\", \"total\": 450.25 }\n  ],\n  \"top_merchants\": [\n    { \"merchant_id\": \"b2c3d4e5-f6a7-4890-8123-4567890abcde\", \"merchant_name\": \"Starbucks\", \"total\": 234.56 }\n  ]\n}"
             }
           ]
         },
