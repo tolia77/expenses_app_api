@@ -135,14 +135,22 @@ export class ReceiptParserOpenRouter extends ReceiptParser {
         throw err;
       }
       if (err instanceof OpenAI.APIError) {
-        throw new OpenRouterError(
-          `OpenRouter ${err.status ?? 0}: ${err.message.slice(0, 80)}`,
-          {
-            status: err.status ?? 0,
-            errorClass: err.constructor.name,
-            excerpt: sanitizeExcerpt(err.message),
-          },
-        );
+        // The SDK parks the parsed HTTP response body on `err.error`. For
+        // OpenRouter 4xx, that body carries the real reason (provider routing
+        // rejection, quota, bad model, etc.); `err.message` is only ever
+        // "<status> Provider returned error", which is useless by itself.
+        const body =
+          err.error !== undefined && err.error !== null
+            ? typeof err.error === 'string'
+              ? err.error
+              : JSON.stringify(err.error)
+            : err.message;
+        const excerpt = sanitizeExcerpt(body);
+        throw new OpenRouterError(`OpenRouter ${err.status ?? 0}: ${excerpt}`, {
+          status: err.status ?? 0,
+          errorClass: err.constructor.name,
+          excerpt,
+        });
       }
       // Unknown (network, SDK bug, etc.) — wrap with status=0.
       const message = err instanceof Error ? err.message : String(err);
