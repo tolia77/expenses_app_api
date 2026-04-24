@@ -1,3 +1,4 @@
 export default async function globalTeardown(): Promise<void> {
-  // stub — real implementation lands in Task 5
+  const container = globalThis.__PG_CONTAINER__;
+  if (container) await container.stop();
 }
