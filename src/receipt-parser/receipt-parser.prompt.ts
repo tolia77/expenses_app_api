@@ -33,7 +33,7 @@ export function buildSystemPrompt(categoryNames: string[]): string {
     '- `price` is a decimal string with up to 2 decimal places (e.g. "12.99", NOT the number 12.99).',
     '- `purchased_at` is an ISO 8601 datetime; prefer UTC with a "Z" suffix (e.g. "2024-01-15T14:30:00Z").',
     '- `payment_method` is a free-form string as printed (e.g. "VISA ****1234", "Apple Pay", "Cash") or null if not visible.',
-    '- `merchant.address` is OMITTED (field absent) when no address is printed on the receipt.',
+    '- `merchant.address` is null when no address is printed on the receipt. The key must always be present.',
     '',
     `Categories: ${JSON.stringify(categoryNames)}`,
     '- For each line item, set `category_id` to the category NAME (as a plain string) from the list above that best fits.',
