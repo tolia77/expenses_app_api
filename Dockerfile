@@ -8,12 +8,16 @@ WORKDIR /app
 # - libheif-dev: HEIC/HEIF decode support — required by CONTEXT.md format allowlist
 # - libde265-dev: HEVC codec library — libheif dynamically loads this; HEIC buffers fail without it
 # - ca-certificates: for npm over HTTPS (bookworm-slim does not include by default)
+# - procps: provides `ps`, which @nestjs/cli's tree-kill shells out to on
+#   `nest start --watch` reloads. Without it, the old node process survives
+#   every hot reload and holds port 3004 → EADDRINUSE on the new spawn.
 # Cleanup apt lists to keep image under ~200 MB.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       python3 make g++ \
       libvips-dev libvips-tools libheif-dev libde265-dev \
       ca-certificates \
+      procps \
  && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
