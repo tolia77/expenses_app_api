@@ -32,8 +32,10 @@ export const receiptSchema = z.object({
       name: z.string().describe('Merchant/store name as printed'),
       address: z
         .string()
-        .optional()
-        .describe('Street address if printed; omit field if absent'),
+        .nullable()
+        .describe(
+          'Street address if printed; null if absent (must be present as a key)',
+        ),
     })
     .nullable()
     .describe('Merchant details; null when is_receipt is false'),

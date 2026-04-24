@@ -17,7 +17,7 @@ export interface ParsedReceipt {
   is_receipt: boolean;
   merchant: {
     name: string;
-    address?: string; // optional (frequently missing on receipts), NOT nullable
+    address: string | null; // nullable, not optional — OpenAI strict mode disallows optional keys
   } | null;
   payment_method: string | null;
   purchased_at: string | null; // ISO 8601 datetime, nullable

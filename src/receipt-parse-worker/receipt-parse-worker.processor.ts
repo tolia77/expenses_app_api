@@ -356,7 +356,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
   private async upsertMerchant(
     em: EntityManager,
     userId: string,
-    merchantData: { name: string; address?: string } | null,
+    merchantData: { name: string; address: string | null } | null,
   ): Promise<string | null> {
     if (!merchantData?.name) return null;
 
