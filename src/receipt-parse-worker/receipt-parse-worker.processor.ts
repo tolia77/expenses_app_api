@@ -170,7 +170,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
         // stays clean). Log format is OWNED by the helper; here we inline it
         // rather than creating a second log-only helper.
         this.logger.error(
-          `parse_err parse_id=${parse_id} error_code=${errorCode} class=${errName} model=${model} message=${errMessage.slice(0, 120)}`,
+          `parse_err parse_id=${parse_id} error_code=${errorCode} class=${errName} model=${model} message=${errMessage.slice(0, 500)}`,
         );
       }
 
@@ -463,10 +463,12 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
     parseResult?: ParseResult,
   ): Promise<void> {
     // Emit the parse_err log line. Format is OPS-02 locked:
-    //   parse_err parse_id=<id> error_code=<code> class=<className> message=<msg.slice(0,120)>
+    //   parse_err parse_id=<id> error_code=<code> class=<className> message=<msg.slice(0,500)>
     // className is the .name of a real Error subclass — grep-auditable.
+    // Slice matches the DB `error_message` column cap below so log and row
+    // carry the same detail.
     this.logger.error(
-      `parse_err parse_id=${parseId} error_code=${errorCode} class=${className} message=${errorMessage.slice(0, 120)}`,
+      `parse_err parse_id=${parseId} error_code=${errorCode} class=${className} message=${errorMessage.slice(0, 500)}`,
     );
 
     const update: Partial<ReceiptParse> = {
