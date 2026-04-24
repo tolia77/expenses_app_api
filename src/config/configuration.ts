@@ -28,7 +28,10 @@ export default () => ({
   },
   ai: {
     apiKey: process.env.OPENROUTER_API_KEY,
-    modelChain: parseModelChain(process.env.AI_MODEL_CHAIN, process.env.AI_MODEL),
+    modelChain: parseModelChain(
+      process.env.AI_MODEL_CHAIN,
+      process.env.AI_MODEL,
+    ),
     baseUrl: process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1',
   },
 });
