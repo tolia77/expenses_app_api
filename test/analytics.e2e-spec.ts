@@ -51,11 +51,36 @@ async function seedAnalyticsFixture(
   ]);
 
   await expenseRepo.save([
-    { receipt_id: r1.id, category_id: categories['Groceries'], name: 'Apples', price: 5 as any },
-    { receipt_id: r1.id, category_id: categories['Groceries'], name: 'Milk',   price: 3 as any },
-    { receipt_id: r2.id, category_id: categories['Groceries'], name: 'Bread',  price: 2 as any },
-    { receipt_id: r3.id, category_id: categories['Dining'],    name: 'Burger', price: 10 as any },
-    { receipt_id: r3.id, category_id: categories['Dining'],    name: 'Fries',  price: 4 as any },
+    {
+      receipt_id: r1.id,
+      category_id: categories['Groceries'],
+      name: 'Apples',
+      price: 5 as any,
+    },
+    {
+      receipt_id: r1.id,
+      category_id: categories['Groceries'],
+      name: 'Milk',
+      price: 3 as any,
+    },
+    {
+      receipt_id: r2.id,
+      category_id: categories['Groceries'],
+      name: 'Bread',
+      price: 2 as any,
+    },
+    {
+      receipt_id: r3.id,
+      category_id: categories['Dining'],
+      name: 'Burger',
+      price: 10 as any,
+    },
+    {
+      receipt_id: r3.id,
+      category_id: categories['Dining'],
+      name: 'Fries',
+      price: 4 as any,
+    },
   ]);
 
   return {
@@ -111,7 +136,7 @@ describe('Analytics (e2e)', () => {
       (r: { category_id: string }) => r.category_id === fx.categoryDining,
     );
     expect(Number(groceries.total)).toBe(10); // 5 + 3 + 2
-    expect(Number(dining.total)).toBe(14);    // 10 + 4
+    expect(Number(dining.total)).toBe(14); // 10 + 4
   });
 
   it('GET /analytics/by-merchant returns per-merchant totals', async () => {
@@ -141,7 +166,7 @@ describe('Analytics (e2e)', () => {
       (r: { payment_method: string }) => r.payment_method === 'cash',
     );
     expect(Number(card.total)).toBe(22); // r1 (5+3) + r3 (10+4)
-    expect(Number(cash.total)).toBe(2);  // r2 (2)
+    expect(Number(cash.total)).toBe(2); // r2 (2)
   });
 
   it('GET /analytics/top-expenses returns the biggest items first', async () => {

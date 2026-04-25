@@ -41,7 +41,11 @@ export class FakeReceiptParser extends ReceiptParser {
     this.nextOverride = result;
   }
 
-  async parse(photo: Buffer, categories: Category[], model: string): Promise<ParseResult> {
+  async parse(
+    photo: Buffer,
+    categories: Category[],
+    model: string,
+  ): Promise<ParseResult> {
     this.calls.push({ photo, categories, model });
     if (this.nextOverride) {
       const override = this.nextOverride;

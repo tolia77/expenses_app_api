@@ -16,7 +16,11 @@ export interface RecordedJob {
 export class FakeQueue {
   jobs: RecordedJob[] = [];
 
-  async add(name: string, data: unknown, opts?: Record<string, unknown>): Promise<{ id: string }> {
+  async add(
+    name: string,
+    data: unknown,
+    opts?: Record<string, unknown>,
+  ): Promise<{ id: string }> {
     this.jobs.push({ name, data, opts });
     return { id: `fake-${this.jobs.length}` };
   }
@@ -29,5 +33,6 @@ export class FakeQueue {
 // Compile-time check against the bullmq Queue surface we actually use.
 // If ReceiptsService starts calling a Queue method beyond `add`, add it to
 // the Pick below and implement it — drift becomes a build error.
-const _queueSurfaceCheck: Pick<Queue, 'add'> = new FakeQueue() as unknown as Pick<Queue, 'add'>;
+const _queueSurfaceCheck: Pick<Queue, 'add'> =
+  new FakeQueue() as unknown as Pick<Queue, 'add'>;
 void _queueSurfaceCheck;

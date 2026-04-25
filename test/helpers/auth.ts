@@ -28,7 +28,7 @@ export async function signUp(
     .expect(201);
 
   const token = res.body.access_token as string;
-  const decoded = app.get(JwtService).decode(token) as { sub: string };
+  const decoded = app.get(JwtService).decode(token);
   return {
     userId: decoded.sub,
     email,

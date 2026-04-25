@@ -1,5 +1,8 @@
 import 'tsconfig-paths/register';
-import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import {
+  PostgreSqlContainer,
+  StartedPostgreSqlContainer,
+} from '@testcontainers/postgresql';
 import { DataSource } from 'typeorm';
 import { Category } from '../src/categories/category.entity';
 import { Expense } from '../src/expenses/expenses.entity';
@@ -10,7 +13,6 @@ import { User } from '../src/users/user.entity';
 
 // Globals typed for access in globalTeardown via globalThis.
 declare global {
-  // eslint-disable-next-line no-var
   var __PG_CONTAINER__: StartedPostgreSqlContainer | undefined;
 }
 

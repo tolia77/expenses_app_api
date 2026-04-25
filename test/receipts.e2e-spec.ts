@@ -52,7 +52,10 @@ describe('Receipts (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/receipts')
         .set(me.authHeader)
-        .send({ payment_method: 'card', purchased_at: '2026-04-01T10:00:00.000Z' })
+        .send({
+          payment_method: 'card',
+          purchased_at: '2026-04-01T10:00:00.000Z',
+        })
         .expect(201);
       expect(res.body).toEqual(
         expect.objectContaining({
@@ -122,12 +125,17 @@ describe('Receipts (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post(`/receipts/${id}/photo`)
         .set(me.authHeader)
-        .attach('photo', PNG_1x1, { filename: 'r.png', contentType: 'image/png' })
+        .attach('photo', PNG_1x1, {
+          filename: 'r.png',
+          contentType: 'image/png',
+        })
         .expect(201);
 
       expect(res.body.photo_url).toMatch(/^http:\/\/fake-storage\//);
       expect(fakes.storage.uploads).toHaveLength(1);
-      expect(fakes.storage.uploads[0].key).toContain(`receipts/${me.userId}/${id}/`);
+      expect(fakes.storage.uploads[0].key).toContain(
+        `receipts/${me.userId}/${id}/`,
+      );
       expect(fakes.queue.jobs).toHaveLength(1);
       expect(fakes.queue.jobs[0].name).toBe('parse');
       expect(fakes.queue.jobs[0].data).toMatchObject({
@@ -162,7 +170,10 @@ describe('Receipts (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/receipts/${theirId}/photo`)
         .set(me.authHeader)
-        .attach('photo', PNG_1x1, { filename: 'r.png', contentType: 'image/png' })
+        .attach('photo', PNG_1x1, {
+          filename: 'r.png',
+          contentType: 'image/png',
+        })
         .expect(404);
     });
   });
@@ -173,7 +184,10 @@ describe('Receipts (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/receipts/${id}/photo`)
         .set(me.authHeader)
-        .attach('photo', PNG_1x1, { filename: 'r.png', contentType: 'image/png' })
+        .attach('photo', PNG_1x1, {
+          filename: 'r.png',
+          contentType: 'image/png',
+        })
         .expect(201);
 
       await request(app.getHttpServer())

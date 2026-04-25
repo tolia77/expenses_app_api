@@ -14,7 +14,11 @@ export class FakeStorage {
     // no-op; StorageService calls this in onModuleInit
   }
 
-  async upload(key: string, buffer: Buffer, contentType: string): Promise<void> {
+  async upload(
+    key: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
     this.uploads.push({ key, buffer, contentType });
     this.downloads[key] = buffer;
   }

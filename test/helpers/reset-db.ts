@@ -6,7 +6,9 @@ import { seedCategories } from './seed-categories';
  * and re-seed reference data. Run in a top-level beforeEach in every spec.
  * Returns the seeded category id map for convenience.
  */
-export async function resetDb(dataSource: DataSource): Promise<Record<string, string>> {
+export async function resetDb(
+  dataSource: DataSource,
+): Promise<Record<string, string>> {
   const tables = dataSource.entityMetadatas
     .map((m) => `"${m.tableName}"`)
     .join(', ');
