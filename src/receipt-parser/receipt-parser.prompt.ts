@@ -34,6 +34,7 @@ export function buildSystemPrompt(categoryNames: string[]): string {
     '- `purchased_at` is an ISO 8601 datetime; prefer UTC with a "Z" suffix (e.g. "2024-01-15T14:30:00Z").',
     '- `payment_method` is a free-form string as printed (e.g. "VISA ****1234", "Apple Pay", "Cash") or null if not visible.',
     '- `merchant.address` is null when no address is printed on the receipt. The key must always be present.',
+    '- `merchant.name` and `merchant.address`: extract VERBATIM as printed. Preserve legal-form prefixes (ТОВ, ФОП, LLC, Inc., etc.), quotation marks, punctuation, capitalization, and word order. Do NOT abbreviate, expand abbreviations, reorder address parts, add country/region/city that is not printed, or paraphrase. If the address spans multiple lines on the receipt, join them with a single space.',
     '',
     `Categories: ${JSON.stringify(categoryNames)}`,
     '- For each line item, set `category_id` to the category NAME (as a plain string) from the list above that best fits.',
