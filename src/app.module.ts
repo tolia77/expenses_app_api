@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
@@ -18,6 +18,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { WhitelistSerializerInterceptor } from './common/interceptors/whitelist-serializer.interceptor';
+import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
 @Module({
   imports: [
@@ -60,4 +61,8 @@ import { WhitelistSerializerInterceptor } from './common/interceptors/whitelist-
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}
