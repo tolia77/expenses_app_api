@@ -10,6 +10,7 @@ import {
   ManyToOne,
   OneToMany,
   CreateDateColumn,
+  UpdateDateColumn,
   JoinColumn,
 } from 'typeorm';
 
@@ -57,8 +58,12 @@ export class Receipt {
   photo_url: string | null;
 
   @Expose()
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
+
+  @Expose()
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at: Date;
 
   @Expose()
   @Type(() => Expense)

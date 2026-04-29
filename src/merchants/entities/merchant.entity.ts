@@ -8,6 +8,8 @@ import {
   OneToMany,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
@@ -40,4 +42,12 @@ export class Merchant {
   @Exclude()
   @OneToMany(() => Receipt, (receipt) => receipt.merchant)
   receipts: Receipt[];
+
+  @Expose()
+  @CreateDateColumn({ name: 'created_at' })
+  created_at: Date;
+
+  @Expose()
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at: Date;
 }
