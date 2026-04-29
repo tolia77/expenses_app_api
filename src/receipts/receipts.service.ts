@@ -12,7 +12,7 @@ import { FilterReceiptsDto } from './dto/filter-receipts.dto';
 import { MerchantsService } from '../merchants/merchants.service';
 import { StorageService } from '../storage/storage.service';
 import { AppException } from '../common/exceptions/app.exception';
-import { Paginated } from '../common/dto/paginated-response.dto';
+import { paginate } from '../common/dto/paginated-response.dto';
 
 @Injectable()
 export class ReceiptsService {
@@ -42,8 +42,6 @@ export class ReceiptsService {
   }
 
   async findAll(userId: string, filter?: FilterReceiptsDto) {
-    const page = filter?.page ?? 1;
-    const limit = filter?.limit ?? 20;
     const where: any = { user_id: userId };
     if (filter?.from && filter?.to) {
       where.purchased_at = Between(
@@ -59,18 +57,16 @@ export class ReceiptsService {
         new Date(filter.to + 'T23:59:59.999Z'),
       );
     }
-    const [receipts, total] = await this.receiptRepository.findAndCount({
-      where,
-      relations: ['expenses', 'expenses.category'],
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    await Promise.all(receipts.map((r) => this.attachPhotoUrl(r)));
-    const klass = Paginated(Receipt);
-    return Object.assign(new klass(), {
-      data: receipts,
-      meta: { total, page, limit },
-    });
+    const result = await paginate(filter ?? {}, Receipt, (skip, take) =>
+      this.receiptRepository.findAndCount({
+        where,
+        relations: ['expenses', 'expenses.category'],
+        skip,
+        take,
+      }),
+    );
+    await Promise.all(result.data.map((r) => this.attachPhotoUrl(r)));
+    return result;
   }
 
   async findOne(id: string, userId: string) {

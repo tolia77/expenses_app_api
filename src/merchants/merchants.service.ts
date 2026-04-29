@@ -6,7 +6,7 @@ import { Merchant } from './entities/merchant.entity';
 import { Repository } from 'typeorm';
 import { AppException } from '../common/exceptions/app.exception';
 import { PaginationDto } from '../common/dto/pagination.dto';
-import { Paginated } from '../common/dto/paginated-response.dto';
+import { paginate } from '../common/dto/paginated-response.dto';
 
 @Injectable()
 export class MerchantsService {
@@ -27,18 +27,13 @@ export class MerchantsService {
   }
 
   async findAll(userId: string, pagination: PaginationDto) {
-    const page = pagination.page ?? 1;
-    const limit = pagination.limit ?? 20;
-    const [data, total] = await this.merchantRepository.findAndCount({
-      where: { user_id: userId },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    const klass = Paginated(Merchant);
-    return Object.assign(new klass(), {
-      data,
-      meta: { total, page, limit },
-    });
+    return paginate(pagination, Merchant, (skip, take) =>
+      this.merchantRepository.findAndCount({
+        where: { user_id: userId },
+        skip,
+        take,
+      }),
+    );
   }
 
   async findOne(id: string, userId: string): Promise<Merchant> {

@@ -11,6 +11,7 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
+import type { JwtUser } from './decorators/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -31,10 +32,7 @@ export class AuthController {
   }
 
   @Get('me')
-  me(@CurrentUser() user: { sub: string; email: string }): {
-    id: string;
-    email: string;
-  } {
+  me(@CurrentUser() user: JwtUser): { id: string; email: string } {
     return { id: user.sub, email: user.email };
   }
 }

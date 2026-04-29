@@ -8,7 +8,7 @@ import { SearchExpensesDto } from './dto/search-expenses.dto';
 import { ReceiptsService } from '../receipts/receipts.service';
 import { CategoriesService } from '../categories/categories.service';
 import { AppException } from '../common/exceptions/app.exception';
-import { Paginated } from '../common/dto/paginated-response.dto';
+import { paginate } from '../common/dto/paginated-response.dto';
 
 @Injectable()
 export class ExpensesService {
@@ -20,8 +20,6 @@ export class ExpensesService {
   ) {}
 
   async findAll(userId: string, filter?: SearchExpensesDto) {
-    const page = filter?.page ?? 1;
-    const limit = filter?.limit ?? 20;
     const qb = this.expenseRepository
       .createQueryBuilder('expense')
       .innerJoin('expense.receipt', 'receipt')
@@ -36,13 +34,9 @@ export class ExpensesService {
       );
     }
 
-    qb.skip((page - 1) * limit).take(limit);
-    const [data, total] = await qb.getManyAndCount();
-    const klass = Paginated(Expense);
-    return Object.assign(new klass(), {
-      data,
-      meta: { total, page, limit },
-    });
+    return paginate(filter ?? {}, Expense, (skip, take) =>
+      qb.skip(skip).take(take).getManyAndCount(),
+    );
   }
 
   async create(

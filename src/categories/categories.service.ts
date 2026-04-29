@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Category } from './category.entity';
 import { AppException } from '../common/exceptions/app.exception';
 import { PaginationDto } from '../common/dto/pagination.dto';
-import { Paginated } from '../common/dto/paginated-response.dto';
+import { paginate } from '../common/dto/paginated-response.dto';
 import { FALLBACK_CATEGORY_NAME } from './categories.constants';
 
 @Injectable()
@@ -15,21 +15,16 @@ export class CategoriesService {
   ) {}
 
   async findAll(pagination: PaginationDto) {
-    const page = pagination.page ?? 1;
-    const limit = pagination.limit ?? 20;
-    const [data, total] = await this.categoryRepository
-      .createQueryBuilder('c')
-      .orderBy('CASE WHEN c.name = :fallback THEN 1 ELSE 0 END', 'ASC')
-      .addOrderBy('c.name', 'ASC')
-      .setParameter('fallback', FALLBACK_CATEGORY_NAME)
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-    const klass = Paginated(Category);
-    return Object.assign(new klass(), {
-      data,
-      meta: { total, page, limit },
-    });
+    return paginate(pagination, Category, (skip, take) =>
+      this.categoryRepository
+        .createQueryBuilder('c')
+        .orderBy('CASE WHEN c.name = :fallback THEN 1 ELSE 0 END', 'ASC')
+        .addOrderBy('c.name', 'ASC')
+        .setParameter('fallback', FALLBACK_CATEGORY_NAME)
+        .skip(skip)
+        .take(take)
+        .getManyAndCount(),
+    );
   }
 
   async findById(id: string): Promise<Category> {
