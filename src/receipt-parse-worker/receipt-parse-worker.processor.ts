@@ -132,101 +132,25 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
     const categories = await this.categoryRepo.find();
 
     // --- 4. Call parser (outside tx) — classify any thrown error ---
-    // Model tier escalates with attempt number. On a chain of length N,
-    // BullMQ is configured with attempts=N (see receipt-parse-worker.module.ts
-    // after Task 5), so attemptsMade walks 0..N-1 over the retry sequence.
-    const model = selectTierModel(job.attemptsMade, this.modelChain);
-    let parseResult: ParseResult;
-    try {
-      parseResult = await this.receiptParser.parse(
-        photoBuffer,
-        categories,
-        model,
-      );
-    } catch (err) {
-      const durationMs = Date.now() - startedAt;
-      const { errorCode, retryable } = this.classifyParserError(err);
-      const errName = err instanceof Error ? err.name : 'UnknownError';
-      const errMessage = err instanceof Error ? err.message : String(err);
-
-      if (!retryable || this.isFinalAttempt(job)) {
-        // Terminal: log + write status='failed' + error_code + error_message.
-        // No parseResult — the parser threw, so token columns stay null per
-        // OPS-03 wording ("every completed attempt where a response was received").
-        // writeTerminalFailure emits the parse_err log line using errName as
-        // the class field (which IS err.name for parser-thrown errors — the
-        // `class=<err.name>` invariant holds automatically here).
-        await this.writeTerminalFailure(
-          parse_id,
-          errorCode,
-          errMessage,
-          errName,
-          job,
-          durationMs,
-        );
-      } else {
-        // Non-terminal retryable attempt — log only, no DB write. ReceiptParse
-        // row stays status='pending' between retries (FLOW-02 state machine
-        // stays clean). Log format is OWNED by the helper; here we inline it
-        // rather than creating a second log-only helper.
-        this.logger.error(
-          `parse_err parse_id=${parse_id} error_code=${errorCode} class=${errName} model=${model} message=${errMessage.slice(0, 500)}`,
-        );
-      }
-
-      if (!retryable) {
-        // Stop BullMQ redispatch for terminal-on-attempt-1 errors
-        // (auth_failed, image_unreadable — classification returns retryable=false).
-        throw new UnrecoverableError(errorCode);
-      }
-      // Retryable — rethrow original error so BullMQ applies exponential backoff
-      // per defaultJobOptions (attempts=chain.length, 5s exp).
-      throw err;
-    }
+    const { parseResult, model } = await this.runParser(
+      job,
+      parse_id,
+      photoBuffer,
+      categories,
+      startedAt,
+    );
 
     // --- 5. Check is_receipt (EXTRACT-04) — terminal on attempt 1 ---
-    if (!parseResult.data.is_receipt) {
-      const durationMs = Date.now() - startedAt;
-      // parseResult IS present — populate token columns (OPS-03).
-      // className='NotAReceiptError' — the .name of the tiny error class
-      // declared at top of file. Grep-auditable.
-      await this.writeTerminalFailure(
-        parse_id,
-        'not_a_receipt',
-        'image is not a receipt',
-        'NotAReceiptError',
-        job,
-        durationMs,
-        parseResult,
-      );
-      throw new UnrecoverableError('not_a_receipt');
-    }
+    await this.assertIsReceipt(parseResult, parse_id, job, startedAt);
 
     // --- 6. Check zero line items (EXTRACT-05) — retry, terminal on final attempt ---
-    const lineItems = parseResult.data.line_items ?? [];
-    if (lineItems.length === 0) {
-      const durationMs = Date.now() - startedAt;
-      if (this.isFinalAttempt(job)) {
-        // Final attempt — log + terminal failure write. BullMQ marks the job
-        // failed naturally after this rethrow; no UnrecoverableError needed.
-        await this.writeTerminalFailure(
-          parse_id,
-          'zero_line_items',
-          'parse succeeded but no line_items extracted',
-          'ZeroLineItemsError',
-          job,
-          durationMs,
-          parseResult,
-        );
-      } else {
-        // Non-final attempt — log only, no DB write. Stays status='pending'.
-        this.logger.error(
-          `parse_err parse_id=${parse_id} error_code=zero_line_items class=ZeroLineItemsError model=${model} message=parse succeeded but no line_items extracted`,
-        );
-      }
-      // Retry (or final-attempt: rethrow so BullMQ registers the failure).
-      throw new Error('zero_line_items');
-    }
+    const lineItems = await this.assertHasLineItems(
+      parseResult,
+      model,
+      parse_id,
+      job,
+      startedAt,
+    );
 
     // --- 7. Resolve fallback category id (EXTRACT-03) ---
     // FALLBACK_CATEGORY_NAME = 'Other' (imported — no hardcoding).
@@ -242,6 +166,149 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
     }
 
     // --- 8. Tx: merchant upsert → receipt update → expense reset → parse terminal update ---
+    const durationMs = await this.persistParseResult(
+      { parse_id, receipt_id, user_id },
+      parseResult,
+      lineItems,
+      fallbackCategory.id,
+      job,
+      startedAt,
+    );
+
+    // --- 9. Success log (OPS-01, Pitfall #6) ---
+    // Fields: parse_id, receipt_id, model, attempt, duration_ms, total_tokens.
+    // durationMs is the SAME value written to receipt_parse.duration_ms inside
+    // the tx (single-capture — Info 4). NO payload, NO prompt, NO response body.
+    // Leading `parse_ok` tag for grep.
+    this.logger.log(
+      `parse_ok parse_id=${parse_id} receipt_id=${receipt_id} model=${parseResult.model} attempt=${job.attemptsMade + 1} duration_ms=${durationMs} total_tokens=${parseResult.usage.total_tokens}`,
+    );
+  }
+
+  private async runParser(
+    job: Job,
+    parseId: string,
+    photoBuffer: Buffer,
+    categories: Category[],
+    startedAt: number,
+  ): Promise<{ parseResult: ParseResult; model: string }> {
+    // Model tier escalates with attempt number. On a chain of length N,
+    // BullMQ is configured with attempts=N (see receipt-parse-worker.module.ts
+    // after Task 5), so attemptsMade walks 0..N-1 over the retry sequence.
+    const model = selectTierModel(job.attemptsMade, this.modelChain);
+    try {
+      const parseResult = await this.receiptParser.parse(
+        photoBuffer,
+        categories,
+        model,
+      );
+      return { parseResult, model };
+    } catch (err) {
+      const durationMs = Date.now() - startedAt;
+      const { errorCode, retryable } = this.classifyParserError(err);
+      const errName = err instanceof Error ? err.name : 'UnknownError';
+      const errMessage = err instanceof Error ? err.message : String(err);
+
+      if (!retryable || this.isFinalAttempt(job)) {
+        // Terminal: log + write status='failed' + error_code + error_message.
+        // No parseResult — the parser threw, so token columns stay null per
+        // OPS-03 wording ("every completed attempt where a response was received").
+        // writeTerminalFailure emits the parse_err log line using errName as
+        // the class field (which IS err.name for parser-thrown errors — the
+        // `class=<err.name>` invariant holds automatically here).
+        await this.writeTerminalFailure(
+          parseId,
+          errorCode,
+          errMessage,
+          errName,
+          job,
+          durationMs,
+        );
+      } else {
+        // Non-terminal retryable attempt — log only, no DB write. ReceiptParse
+        // row stays status='pending' between retries (FLOW-02 state machine
+        // stays clean). Log format is OWNED by the helper; here we inline it
+        // rather than creating a second log-only helper.
+        this.logger.error(
+          `parse_err parse_id=${parseId} error_code=${errorCode} class=${errName} model=${model} message=${errMessage.slice(0, 500)}`,
+        );
+      }
+
+      if (!retryable) {
+        // Stop BullMQ redispatch for terminal-on-attempt-1 errors
+        // (auth_failed, image_unreadable — classification returns retryable=false).
+        throw new UnrecoverableError(errorCode);
+      }
+      // Retryable — rethrow original error so BullMQ applies exponential backoff
+      // per defaultJobOptions (attempts=chain.length, 5s exp).
+      throw err;
+    }
+  }
+
+  private async assertIsReceipt(
+    parseResult: ParseResult,
+    parseId: string,
+    job: Job,
+    startedAt: number,
+  ): Promise<void> {
+    if (parseResult.data.is_receipt) return;
+    const durationMs = Date.now() - startedAt;
+    // parseResult IS present — populate token columns (OPS-03).
+    // className='NotAReceiptError' — the .name of the tiny error class
+    // declared at top of file. Grep-auditable.
+    await this.writeTerminalFailure(
+      parseId,
+      'not_a_receipt',
+      'image is not a receipt',
+      'NotAReceiptError',
+      job,
+      durationMs,
+      parseResult,
+    );
+    throw new UnrecoverableError('not_a_receipt');
+  }
+
+  private async assertHasLineItems(
+    parseResult: ParseResult,
+    model: string,
+    parseId: string,
+    job: Job,
+    startedAt: number,
+  ): Promise<NonNullable<ParseResult['data']['line_items']>> {
+    const lineItems = parseResult.data.line_items ?? [];
+    if (lineItems.length > 0) return lineItems;
+
+    const durationMs = Date.now() - startedAt;
+    if (this.isFinalAttempt(job)) {
+      // Final attempt — log + terminal failure write. BullMQ marks the job
+      // failed naturally after this rethrow; no UnrecoverableError needed.
+      await this.writeTerminalFailure(
+        parseId,
+        'zero_line_items',
+        'parse succeeded but no line_items extracted',
+        'ZeroLineItemsError',
+        job,
+        durationMs,
+        parseResult,
+      );
+    } else {
+      // Non-final attempt — log only, no DB write. Stays status='pending'.
+      this.logger.error(
+        `parse_err parse_id=${parseId} error_code=zero_line_items class=ZeroLineItemsError model=${model} message=parse succeeded but no line_items extracted`,
+      );
+    }
+    // Retry (or final-attempt: rethrow so BullMQ registers the failure).
+    throw new Error('zero_line_items');
+  }
+
+  private async persistParseResult(
+    ctx: { parse_id: string; receipt_id: string; user_id: string },
+    parseResult: ParseResult,
+    lineItems: NonNullable<ParseResult['data']['line_items']>,
+    fallbackCategoryId: string,
+    job: Job,
+    startedAt: number,
+  ): Promise<number> {
     // durationMs is captured ONCE inside the tx (last step before terminal UPDATE)
     // and reused in the success log after the tx resolves. Info 4 — avoids the
     // two-read skew that would otherwise exist (tx-commit overhead between reads).
@@ -251,7 +318,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
       //     save() can't express ON CONFLICT with a functional index.
       const merchantId = await this.upsertMerchant(
         em,
-        user_id,
+        ctx.user_id,
         parseResult.data.merchant,
       );
 
@@ -270,7 +337,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
               ? new Date(parseResult.data.purchased_at)
               : null,
             parseResult.data.payment_method ?? null,
-            receipt_id,
+            ctx.receipt_id,
           ],
         );
       } else {
@@ -285,14 +352,16 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
               ? new Date(parseResult.data.purchased_at)
               : null,
             parseResult.data.payment_method ?? null,
-            receipt_id,
+            ctx.receipt_id,
           ],
         );
       }
 
       // 8c. Delete existing expenses for this receipt (FLOW-05, Pitfall #2).
       //     Unconditional — every attempt resets expenses.
-      await em.query(`DELETE FROM expense WHERE receipt_id = $1`, [receipt_id]);
+      await em.query(`DELETE FROM expense WHERE receipt_id = $1`, [
+        ctx.receipt_id,
+      ]);
 
       // 8d. Insert new expenses. category_id falls back to the 'Other' id when
       //     the parser didn't assign a category (EXTRACT-03).
@@ -300,8 +369,8 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
       for (const item of lineItems) {
         await expenseRepo.save(
           expenseRepo.create({
-            receipt_id,
-            category_id: item.category_id ?? fallbackCategory.id,
+            receipt_id: ctx.receipt_id,
+            category_id: item.category_id ?? fallbackCategoryId,
             name: item.name,
             // price is a decimal string from the parser (interface); convert to number at the ORM boundary
             price: parseFloat(item.price) as any,
@@ -318,7 +387,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
       // 8f. Terminal ReceiptParse update — status=parsed + all success fields
       //     (OPS-03: all three token columns populated; FLOW-07: attempts =
       //     attemptsMade + 1).
-      await em.getRepository(ReceiptParse).update(parse_id, {
+      await em.getRepository(ReceiptParse).update(ctx.parse_id, {
         status: 'parsed',
         model: parseResult.model,
         duration_ms: durationMs,
@@ -331,15 +400,7 @@ export class ReceiptParseWorkerProcessor extends WorkerHost {
         // error_code + error_message intentionally left null (success path).
       });
     });
-
-    // --- 9. Success log (OPS-01, Pitfall #6) ---
-    // Fields: parse_id, receipt_id, model, attempt, duration_ms, total_tokens.
-    // durationMs is the SAME value written to receipt_parse.duration_ms inside
-    // the tx (single-capture — Info 4). NO payload, NO prompt, NO response body.
-    // Leading `parse_ok` tag for grep.
-    this.logger.log(
-      `parse_ok parse_id=${parse_id} receipt_id=${receipt_id} model=${parseResult.model} attempt=${job.attemptsMade + 1} duration_ms=${durationMs} total_tokens=${parseResult.usage.total_tokens}`,
-    );
+    return durationMs;
   }
 
   /**
