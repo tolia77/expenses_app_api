@@ -199,6 +199,10 @@ export class ReceiptsService {
     return result.ext; // 'jpg' | 'png' | 'webp'
   }
 
+  async assertOwnedByUser(id: string, userId: string): Promise<void> {
+    await this.findOwnedReceiptOrThrow(id, userId);
+  }
+
   private async findOwnedReceiptOrThrow(
     id: string,
     userId: string,

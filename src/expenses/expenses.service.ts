@@ -45,7 +45,7 @@ export class ExpensesService {
     createExpenseDto: CreateExpenseDto,
   ): Promise<Expense> {
     // Verify receipt ownership (throws 404 if not found/not owned)
-    await this.receiptsService.findOne(receiptId, userId);
+    await this.receiptsService.assertOwnedByUser(receiptId, userId);
 
     // Verify category exists (global categories have no per-user ownership)
     const { category_id, ...rest } = createExpenseDto;
