@@ -2,7 +2,13 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Between,
+  FindOneOptions,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Receipt } from './entities/receipt.entity';
 import { ReceiptParse } from '../receipt-parse-worker/receipt-parse.entity';
@@ -70,12 +76,18 @@ export class ReceiptsService {
   }
 
   async findOne(id: string, userId: string) {
-    const receipt = await this.findOneEntity(id, userId);
+    const receipt = await this.findOwnedReceiptOrThrow(id, userId, {
+      relations: ['expenses', 'expenses.category', 'parses'],
+      order: { parses: { created_at: 'DESC' } },
+    });
     return this.attachPhotoUrl(receipt);
   }
 
   async update(id: string, userId: string, updateReceiptDto: UpdateReceiptDto) {
-    const receipt = await this.findOneEntity(id, userId);
+    const receipt = await this.findOwnedReceiptOrThrow(id, userId, {
+      relations: ['expenses', 'expenses.category', 'parses'],
+      order: { parses: { created_at: 'DESC' } },
+    });
     const { merchant_id, ...rest } = updateReceiptDto;
     if (merchant_id !== undefined) {
       await this.merchantsService.findOne(merchant_id, userId);
@@ -87,16 +99,7 @@ export class ReceiptsService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
-    const receipt = await this.receiptRepository.findOne({
-      where: { id, user_id: userId },
-    });
-    if (!receipt) {
-      throw new AppException(
-        'RECEIPT_NOT_FOUND',
-        'Receipt not found',
-        HttpStatus.NOT_FOUND,
-      );
-    }
+    const receipt = await this.findOwnedReceiptOrThrow(id, userId);
     if (receipt.photo_key) {
       await this.storageService.delete(receipt.photo_key);
     }
@@ -117,16 +120,7 @@ export class ReceiptsService {
     }
 
     // 1) Ownership check (throws 404 before touching S3)
-    const receipt = await this.receiptRepository.findOne({
-      where: { id, user_id: userId },
-    });
-    if (!receipt) {
-      throw new AppException(
-        'RECEIPT_NOT_FOUND',
-        'Receipt not found',
-        HttpStatus.NOT_FOUND,
-      );
-    }
+    const receipt = await this.findOwnedReceiptOrThrow(id, userId);
 
     // 2) Magic-byte MIME validation (throws 400 before touching S3)
     const ext = await this.validateImageMime(file.buffer);
@@ -177,16 +171,7 @@ export class ReceiptsService {
   }
 
   async removePhoto(id: string, userId: string): Promise<void> {
-    const receipt = await this.receiptRepository.findOne({
-      where: { id, user_id: userId },
-    });
-    if (!receipt) {
-      throw new AppException(
-        'RECEIPT_NOT_FOUND',
-        'Receipt not found',
-        HttpStatus.NOT_FOUND,
-      );
-    }
+    const receipt = await this.findOwnedReceiptOrThrow(id, userId);
     if (!receipt.photo_key) {
       throw new AppException(
         'RECEIPT_HAS_NO_PHOTO',
@@ -214,11 +199,14 @@ export class ReceiptsService {
     return result.ext; // 'jpg' | 'png' | 'webp'
   }
 
-  private async findOneEntity(id: string, userId: string): Promise<Receipt> {
+  private async findOwnedReceiptOrThrow(
+    id: string,
+    userId: string,
+    options?: Pick<FindOneOptions<Receipt>, 'relations' | 'order'>,
+  ): Promise<Receipt> {
     const receipt = await this.receiptRepository.findOne({
       where: { id, user_id: userId },
-      relations: ['expenses', 'expenses.category', 'parses'],
-      order: { parses: { created_at: 'DESC' } },
+      ...options,
     });
     if (!receipt) {
       throw new AppException(
