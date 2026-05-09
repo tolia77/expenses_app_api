@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Expense } from './expenses.entity';
@@ -7,7 +7,7 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { SearchExpensesDto } from './dto/search-expenses.dto';
 import { ReceiptsService } from '../receipts/receipts.service';
 import { CategoriesService } from '../categories/categories.service';
-import { AppException } from '../common/exceptions/app.exception';
+import { ExpenseNotFoundError } from '../common/exceptions/domain.errors';
 import { paginate } from '../common/dto/paginated-response.dto';
 
 @Injectable()
@@ -66,11 +66,7 @@ export class ExpensesService {
       relations: ['receipt', 'category'],
     });
     if (!expense || expense.receipt.user_id !== userId) {
-      throw new AppException(
-        'EXPENSE_NOT_FOUND',
-        'Expense not found',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new ExpenseNotFoundError();
     }
     return expense;
   }

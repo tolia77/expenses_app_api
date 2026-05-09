@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { HttpStatus, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { AppException } from './common/exceptions/app.exception';
+import { ValidationFailedError } from './common/exceptions/domain.errors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,12 +18,7 @@ async function bootstrap() {
             message,
           })),
         );
-        return new AppException(
-          'VALIDATION_FAILED',
-          'Validation failed',
-          HttpStatus.BAD_REQUEST,
-          details,
-        );
+        return new ValidationFailedError(details);
       },
     }),
   );

@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -17,7 +17,12 @@ import { UpdateReceiptDto } from './dto/update-receipt.dto';
 import { FilterReceiptsDto } from './dto/filter-receipts.dto';
 import { MerchantsService } from '../merchants/merchants.service';
 import { StorageService } from '../storage/storage.service';
-import { AppException } from '../common/exceptions/app.exception';
+import {
+  InvalidPhotoTypeError,
+  PhotoRequiredError,
+  ReceiptHasNoPhotoError,
+  ReceiptNotFoundError,
+} from '../common/exceptions/domain.errors';
 import { paginate } from '../common/dto/paginated-response.dto';
 
 @Injectable()
@@ -112,11 +117,7 @@ export class ReceiptsService {
     file: Express.Multer.File,
   ): Promise<{ photo_url: string }> {
     if (!file || !file.buffer || file.buffer.length === 0) {
-      throw new AppException(
-        'PHOTO_REQUIRED',
-        'Photo file is required',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new PhotoRequiredError();
     }
 
     // 1) Ownership check (throws 404 before touching S3)
@@ -173,11 +174,7 @@ export class ReceiptsService {
   async removePhoto(id: string, userId: string): Promise<void> {
     const receipt = await this.findOwnedReceiptOrThrow(id, userId);
     if (!receipt.photo_key) {
-      throw new AppException(
-        'RECEIPT_HAS_NO_PHOTO',
-        'Receipt has no photo',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new ReceiptHasNoPhotoError();
     }
     // S3 first, then DB — per Locked Decision
     await this.storageService.delete(receipt.photo_key);
@@ -190,11 +187,7 @@ export class ReceiptsService {
     const result = await fileTypeFromBuffer(buffer);
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (!result || !allowed.includes(result.mime)) {
-      throw new AppException(
-        'INVALID_PHOTO_TYPE',
-        'File must be a JPEG, PNG, or WebP image',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new InvalidPhotoTypeError();
     }
     return result.ext; // 'jpg' | 'png' | 'webp'
   }
@@ -213,11 +206,7 @@ export class ReceiptsService {
       ...options,
     });
     if (!receipt) {
-      throw new AppException(
-        'RECEIPT_NOT_FOUND',
-        'Receipt not found',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new ReceiptNotFoundError();
     }
     return receipt;
   }

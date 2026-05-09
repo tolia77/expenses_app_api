@@ -1,10 +1,10 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Merchant } from './entities/merchant.entity';
 import { Repository } from 'typeorm';
-import { AppException } from '../common/exceptions/app.exception';
+import { MerchantNotFoundError } from '../common/exceptions/domain.errors';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate } from '../common/dto/paginated-response.dto';
 
@@ -42,11 +42,7 @@ export class MerchantsService {
       user_id: userId,
     });
     if (!merchant) {
-      throw new AppException(
-        'MERCHANT_NOT_FOUND',
-        'Merchant not found',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new MerchantNotFoundError();
     }
     return merchant;
   }
@@ -67,11 +63,7 @@ export class MerchantsService {
       user_id: userId,
     });
     if (result.affected === 0) {
-      throw new AppException(
-        'MERCHANT_NOT_FOUND',
-        'Merchant not found',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new MerchantNotFoundError();
     }
   }
 }

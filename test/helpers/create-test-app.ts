@@ -1,9 +1,9 @@
-import { INestApplication, HttpStatus, ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module';
-import { AppException } from '../../src/common/exceptions/app.exception';
+import { ValidationFailedError } from '../../src/common/exceptions/domain.errors';
 import { StorageService } from '../../src/storage/storage.service';
 import { ReceiptParser } from '../../src/receipt-parser/receipt-parser.interface';
 import { ReceiptParseWorkerProcessor } from '../../src/receipt-parse-worker/receipt-parse-worker.processor';
@@ -31,7 +31,7 @@ export interface TestAppHandle {
  * connect to Redis).
  *
  * Mirrors main.ts exactly for the global ValidationPipe so 400 payloads in
- * tests match production shape (custom exceptionFactory → AppException).
+ * tests match production shape (custom exceptionFactory → ValidationFailedError).
  *
  * The caller is responsible for app.close() in afterAll.
  */
@@ -66,12 +66,7 @@ export async function createTestApp(): Promise<TestAppHandle> {
             message,
           })),
         );
-        return new AppException(
-          'VALIDATION_FAILED',
-          'Validation failed',
-          HttpStatus.BAD_REQUEST,
-          details,
-        );
+        return new ValidationFailedError(details);
       },
     }),
   );

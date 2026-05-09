@@ -1,8 +1,8 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from './category.entity';
-import { AppException } from '../common/exceptions/app.exception';
+import { CategoryNotFoundError } from '../common/exceptions/domain.errors';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate } from '../common/dto/paginated-response.dto';
 import { FALLBACK_CATEGORY_NAME } from './categories.constants';
@@ -30,11 +30,7 @@ export class CategoriesService {
   async findById(id: string): Promise<Category> {
     const category = await this.categoryRepository.findOneBy({ id });
     if (!category) {
-      throw new AppException(
-        'CATEGORY_NOT_FOUND',
-        'Category not found',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new CategoryNotFoundError();
     }
     return category;
   }
