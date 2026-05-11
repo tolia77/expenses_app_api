@@ -7,7 +7,7 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { SearchExpensesDto } from './dto/search-expenses.dto';
 import { ReceiptsService } from '../receipts/receipts.service';
 import { CategoriesService } from '../categories/categories.service';
-import { ExpenseNotFoundError } from '../common/exceptions/domain.errors';
+import { EntityNotFoundError } from '../common/exceptions/domain.errors';
 import { paginate } from '../common/dto/paginated-response.dto';
 
 @Injectable()
@@ -66,7 +66,7 @@ export class ExpensesService {
       relations: ['receipt', 'category'],
     });
     if (!expense || expense.receipt.user_id !== userId) {
-      throw new ExpenseNotFoundError();
+      throw new EntityNotFoundError('expense');
     }
     return expense;
   }

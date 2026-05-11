@@ -3,7 +3,7 @@
  * They have NO knowledge of HTTP status, transport, or response shape — that
  * mapping lives in the GlobalExceptionFilter (or any other transport adapter).
  *
- * Services throw these by name (e.g. `throw new ReceiptNotFoundError()`).
+ * Services throw these by name (e.g. `throw new EntityNotFoundError('receipt')`).
  * Adding a new error: subclass DomainError and add a row to STATUS_BY_CODE in
  * src/common/filters/global-exception.filter.ts.
  */
@@ -18,35 +18,13 @@ export abstract class DomainError extends Error {
   }
 }
 
-// --- Categories ---
-export class CategoryNotFoundError extends DomainError {
-  readonly code = 'CATEGORY_NOT_FOUND';
-  constructor() {
-    super('Category not found');
-  }
-}
-
-// --- Expenses ---
-export class ExpenseNotFoundError extends DomainError {
-  readonly code = 'EXPENSE_NOT_FOUND';
-  constructor() {
-    super('Expense not found');
-  }
-}
-
-// --- Merchants ---
-export class MerchantNotFoundError extends DomainError {
-  readonly code = 'MERCHANT_NOT_FOUND';
-  constructor() {
-    super('Merchant not found');
-  }
-}
-
-// --- Receipts ---
-export class ReceiptNotFoundError extends DomainError {
-  readonly code = 'RECEIPT_NOT_FOUND';
-  constructor() {
-    super('Receipt not found');
+export class EntityNotFoundError extends DomainError {
+  readonly code: string;
+  constructor(entity: string) {
+    const capitalized =
+      entity.charAt(0).toUpperCase() + entity.slice(1).toLowerCase();
+    super(`${capitalized} not found`);
+    this.code = `${entity.toUpperCase()}_NOT_FOUND`;
   }
 }
 

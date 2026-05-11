@@ -18,10 +18,10 @@ import { FilterReceiptsDto } from './dto/filter-receipts.dto';
 import { MerchantsService } from '../merchants/merchants.service';
 import { StorageService } from '../storage/storage.service';
 import {
+  EntityNotFoundError,
   InvalidPhotoTypeError,
   PhotoRequiredError,
   ReceiptHasNoPhotoError,
-  ReceiptNotFoundError,
 } from '../common/exceptions/domain.errors';
 import { paginate } from '../common/dto/paginated-response.dto';
 
@@ -206,7 +206,7 @@ export class ReceiptsService {
       ...options,
     });
     if (!receipt) {
-      throw new ReceiptNotFoundError();
+      throw new EntityNotFoundError('receipt');
     }
     return receipt;
   }

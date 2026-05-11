@@ -4,7 +4,7 @@ import { UpdateMerchantDto } from './dto/update-merchant.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Merchant } from './entities/merchant.entity';
 import { Repository } from 'typeorm';
-import { MerchantNotFoundError } from '../common/exceptions/domain.errors';
+import { EntityNotFoundError } from '../common/exceptions/domain.errors';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate } from '../common/dto/paginated-response.dto';
 
@@ -42,7 +42,7 @@ export class MerchantsService {
       user_id: userId,
     });
     if (!merchant) {
-      throw new MerchantNotFoundError();
+      throw new EntityNotFoundError('merchant');
     }
     return merchant;
   }
@@ -63,7 +63,7 @@ export class MerchantsService {
       user_id: userId,
     });
     if (result.affected === 0) {
-      throw new MerchantNotFoundError();
+      throw new EntityNotFoundError('merchant');
     }
   }
 }
