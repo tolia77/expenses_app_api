@@ -21,10 +21,18 @@ export abstract class DomainError extends Error {
 export class EntityNotFoundError extends DomainError {
   readonly code: string;
   constructor(entity: string) {
-    const capitalized =
-      entity.charAt(0).toUpperCase() + entity.slice(1).toLowerCase();
-    super(`${capitalized} not found`);
-    this.code = `${entity.toUpperCase()}_NOT_FOUND`;
+    const words = entity
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .trim()
+      .toLowerCase()
+      .split(/\s+/);
+    const message =
+      words[0].charAt(0).toUpperCase() +
+      words[0].slice(1) +
+      (words.length > 1 ? ' ' + words.slice(1).join(' ') : '');
+    super(`${message} not found`);
+    this.code = `${words.join('_').toUpperCase()}_NOT_FOUND`;
   }
 }
 
